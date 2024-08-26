@@ -13,6 +13,10 @@ module.exports = {
 			return;
 		}
 
+		if (interaction.commandName === 'ping') {
+			await interaction.reply({ content: 'Secret Pong!', ephemeral: true });
+		}
+
 		let { cooldowns } = interaction.client;
 		if (cooldowns === undefined) {
 			cooldowns = new Collection();
