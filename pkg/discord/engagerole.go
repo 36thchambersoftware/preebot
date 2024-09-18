@@ -16,25 +16,20 @@ var (
 )
 
 var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	perms, err := s.GuildRoles(i.GuildID)
-	if err != nil {
-		log.Fatalf("Could not get roles: %v", err)
-	}
 	var (
 		response       string
 		user_has_role  bool
 		twitterliaison *discordgo.Role
 	)
+
+	perms, err := s.GuildRoles(i.GuildID)
+	if err != nil {
+		log.Fatalf("Could not get roles: %v", err)
+	}
+
 	for _, role := range perms {
 		if role.Name == ENGAGE_ROLE_NAME {
 			twitterliaison = role
-		}
-	}
-
-	for _, role := range i.Member.Roles {
-		if role == twitterliaison.ID {
-			user_has_role = true
-			response = "You're already a Twitter Liaison! Thanks!"
 		}
 	}
 
