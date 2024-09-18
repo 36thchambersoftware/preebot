@@ -2,7 +2,6 @@ package discord
 
 import (
 	"log"
-	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -33,7 +32,6 @@ var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	}
 
 	for _, role := range i.Member.Roles {
-		slog.Info("ROLES", "NAME", role)
 		if role == twitterliaison.ID {
 			user_has_role = true
 			response = "You're already a Twitter Liaison! Thanks!"
