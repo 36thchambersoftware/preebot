@@ -46,17 +46,34 @@ var (
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 		discord.ENGAGE_ROLE_COMMAND.Name: discord.ENGAGE_ROLE_HANDLER,
 	}
+	lockout         = make(map[string]struct{})
+	lockoutResponse = &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "Please wait for your last command to finish. :D",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}
 )
 
 func init() {
-	s.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
-			h(s, i)
-		}
-	})
 }
 
 func main() {
+	s.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
+			if _, ok := lockout[i.Member.User.ID]; !ok {
+				lockout[i.Member.User.ID] = struct{}{}
+				defer func() {
+					delete(lockout, i.Member.User.ID)
+				}()
+				h(s, i)
+			} else {
+				s.InteractionRespond(i.Interaction, lockoutResponse)
+			}
+		}
+	})
+
 	s.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
 	})

@@ -33,6 +33,12 @@ var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		}
 	}
 
+	for _, role := range i.Member.Roles {
+		if role == twitterliaison.ID {
+			user_has_role = true
+		}
+	}
+
 	if !user_has_role {
 		err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, twitterliaison.ID)
 		if err != nil {
