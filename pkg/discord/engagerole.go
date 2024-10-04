@@ -18,8 +18,7 @@ var (
 var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var (
 		response       string
-		user_has_role  bool
-		twitterliaison *discordgo.Role
+		twitterLiaison *discordgo.Role
 	)
 
 	perms, err := s.GuildRoles(i.GuildID)
@@ -27,32 +26,11 @@ var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		log.Fatalf("Could not get roles: %v", err)
 	}
 
-	for _, role := range perms {
-		if role.Name == ENGAGE_ROLE_NAME {
-			twitterliaison = role
-		}
-	}
+	twitterLiaison = FindRoleByName(perms, ENGAGE_ROLE_NAME)
 
-	for _, role := range i.Member.Roles {
-		if role == twitterliaison.ID {
-			user_has_role = true
-		}
-	}
-
-	if !user_has_role {
-		err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, twitterliaison.ID)
-		if err != nil {
-			log.Fatalf("Could not assign role: %v", err)
-		}
-
-		response = "Role added: " + twitterliaison.Name
-	} else {
-		err = s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, twitterliaison.ID)
-		if err != nil {
-			log.Fatalf("Could not remove role: %v", err)
-		}
-
-		response = "Role removed: " + twitterliaison.Name
+	err = ToggleRole(s, i, twitterLiaison)
+	if err != nil {
+		log.Fatalf("Could not toggle role: %v", err)
 	}
 
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

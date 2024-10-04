@@ -41,10 +41,12 @@ var (
 
 	commands = []*discordgo.ApplicationCommand{
 		&discord.ENGAGE_ROLE_COMMAND,
+		&discord.LINK_WALLET_COMMAND,
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 		discord.ENGAGE_ROLE_COMMAND.Name: discord.ENGAGE_ROLE_HANDLER,
+		discord.LINK_WALLET_COMMAND.Name: discord.LINK_WALLET_HANDLER,
 	}
 	lockout         = make(map[string]struct{})
 	lockoutResponse = &discordgo.InteractionResponse{
@@ -56,10 +58,18 @@ var (
 	}
 )
 
-func init() {
-}
-
 func main() {
+	s.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Author.GlobalName == "ANNOUNCEMENTS" || m.Author.GlobalName == "ADMIN" {
+			s.ChannelMessageDelete(m.ChannelID, m.ID)
+		}
+
+		if m.Author.Bot {
+			return
+		}
+	})
+
+	// Setup Command Handler
 	s.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 			if _, ok := lockout[i.Member.User.ID]; !ok {
