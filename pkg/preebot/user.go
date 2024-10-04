@@ -43,14 +43,15 @@ func SaveUser(user User) {
 	if err != nil {
 		log.Fatalf("Cannot open user file: %v", err)
 	}
+	defer file.Close()
 
-	userJson := []byte{}
-	userJson, err = json.Marshal(user)
+	userJson, err := json.Marshal(user)
+	if err != nil {
+		log.Fatalf("Cannot marshal user: %v", err)
+	}
+
 	_, err = file.Write(userJson)
 	if err != nil {
 		log.Fatalf("Cannot write to user file: %v", err)
 	}
-
-	// User profile created
-	file.Close()
 }
