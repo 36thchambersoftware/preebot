@@ -32,9 +32,7 @@ func GetLastTransaction(ctx context.Context, address string) bfg.TransactionUTXO
 	APIQueryParams.Order = "desc"
 	txs, err := Client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
-		if err != nil {
-			log.Fatalf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
-		}
+		log.Fatalf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
 	}
 
 	var hash string
