@@ -2,6 +2,8 @@ package discord
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"time"
 
 	"preebot/pkg/blockfrost"
@@ -27,12 +29,14 @@ var (
 )
 
 var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	floatAmount, _ := strconv.ParseFloat(LINK_WALLET_AMOUNT, 64)
+	LINK_WALLET_AMOUNT_DISPLAY := fmt.Sprintf("%.5f", floatAmount/blockfrost.LOVELACE)
 	options := GetOptions(i)
 	address := options["address"].StringValue()
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "Wallet to link: " + address + "\nSend " + LINK_WALLET_AMOUNT + " ada to yourself. Go ahead, I'll wait. :D",
+			Content: "Wallet to link: " + address + "\n\nSend " + string(LINK_WALLET_AMOUNT_DISPLAY) + " ada to yourself. Go ahead, I'll wait a couple minutes. :D",
 			Flags:   discordgo.MessageFlagsEphemeral,
 			Title:   "Wallet Linker",
 		},
@@ -41,7 +45,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	user := preebot.LoadUser(i.Member.User.ID)
 	for _, wallet := range user.Wallets {
 		if address == wallet {
-			content := "Your wallet has already been linked! No need to worry."
+			content := "Your wallet has already been linked! But feel free to link another."
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &content,
 			})
@@ -54,7 +58,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	defer cancel()
 
 	// Give the user a moment to send the tx before checking for it.
-	time.Sleep(1 * time.Second)
+	time.Sleep(120 * time.Second)
 
 	msg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: "I'll check to see if your transaction is on the blockchain now.",
@@ -85,6 +89,27 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	}
 
 	if walletLinked {
+		accountDetails := blockfrost.GetStakeInfo(ctx, address)
+		role, err := AssignDelegatorRole(s, i, accountDetails)
+		if err != nil {
+			s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+				Content: "Something went wrong! Try again, or maybe open a #support-ticket ",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			})
+		}
+
+		content := "You have been assigned a role! <@&" + role.ID + ">"
+		_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: content,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+		if err != nil {
+			s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+				Content: "Something went wrong! Try again, or maybe open a #support-ticket ",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			})
+		}
+
 		user.Wallets = append(user.Wallets, address)
 
 		if user.ID == "" {

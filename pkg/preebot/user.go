@@ -19,8 +19,12 @@ func LoadUser(userID string) User {
 		log.Fatalf("Cannot open user file: %v", err)
 	}
 	defer file.Close()
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Fatalf("Cannot get stats on user file: %v", err)
+	}
 
-	userJson := []byte{}
+	userJson := make([]byte, fileInfo.Size())
 	n, err := file.Read(userJson)
 	if err != nil {
 		log.Fatalf("Cannot read user file: %v", err)

@@ -11,7 +11,7 @@ var (
 	ENGAGE_ROLE_COMMAND = discordgo.ApplicationCommand{
 		Version:     "0.01",
 		Name:        "tweet-me-baby-one-more-time",
-		Description: "Receive the twitter-liason role",
+		Description: "Add/Remove the twitter-liaison role",
 	}
 )
 
@@ -21,12 +21,10 @@ var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		twitterLiaison *discordgo.Role
 	)
 
-	perms, err := s.GuildRoles(i.GuildID)
+	twitterLiaison, err := FindRoleByName(s, i, ENGAGE_ROLE_NAME)
 	if err != nil {
-		log.Fatalf("Could not get roles: %v", err)
+		log.Fatalf("Could not find role: %v", err)
 	}
-
-	twitterLiaison = FindRoleByName(perms, ENGAGE_ROLE_NAME)
 
 	err = ToggleRole(s, i, twitterLiaison)
 	if err != nil {

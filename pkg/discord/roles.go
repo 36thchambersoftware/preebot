@@ -1,19 +1,29 @@
 package discord
 
 import (
+	"preebot/pkg/blockfrost"
+	"preebot/pkg/preebot"
+
+	bfg "github.com/blockfrost/blockfrost-go"
+
 	"github.com/bwmarrin/discordgo"
 )
 
-func FindRoleByName(roles []*discordgo.Role, name string) *discordgo.Role {
+func FindRoleByName(s *discordgo.Session, i *discordgo.InteractionCreate, name string) (*discordgo.Role, error) {
 	var desiredRole *discordgo.Role
 
-	for _, role := range roles {
+	perms, err := s.GuildRoles(i.GuildID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, role := range perms {
 		if role.Name == name {
 			desiredRole = role
 		}
 	}
 
-	return desiredRole
+	return desiredRole, nil
 }
 
 func UserHasRole(memberRoles []string, role discordgo.Role) bool {
@@ -43,4 +53,34 @@ func ToggleRole(s *discordgo.Session, i *discordgo.InteractionCreate, role *disc
 	}
 
 	return nil
+}
+
+func AssignRoleByRoleName(s *discordgo.Session, i *discordgo.InteractionCreate, roleName string) (*discordgo.Role, error) {
+	role, err := FindRoleByName(s, i, roleName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
+	if err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
+func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, accountDetails bfg.Account) (*discordgo.Role, error) {
+	if *accountDetails.PoolID == blockfrost.PREEB_POOL_ID {
+		roleName := preebot.GetTier(accountDetails.ActiveEpoch, accountDetails.ControlledAmount)
+
+		if roleName != "" {
+			role, err := AssignRoleByRoleName(s, i, roleName)
+			if err != nil {
+				return role, err
+			}
+
+			return role, nil
+		}
+	}
+
+	return nil, nil
 }

@@ -14,6 +14,11 @@ var (
 	APIQueryParams bfg.APIQueryParams
 )
 
+const (
+	LOVELACE      = 1_000_000
+	PREEB_POOL_ID = "pool19peeq2czwunkwe3s70yuvwpsrqcyndlqnxvt67usz98px57z7fk"
+)
+
 func init() {
 	blockfrostProjectID, ok := os.LookupEnv("BLOCKFROST_PROJECT_ID")
 	if !ok {
@@ -24,7 +29,6 @@ func init() {
 }
 
 func GetLastTransaction(ctx context.Context, address string) bfg.TransactionUTXOs {
-	slog.Info("GetLastTransaction", "address", address)
 	APIQueryParams.Order = "desc"
 	txs, err := Client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
@@ -36,7 +40,6 @@ func GetLastTransaction(ctx context.Context, address string) bfg.TransactionUTXO
 	var hash string
 	if len(txs) > 0 {
 		hash = txs[0].TxHash
-		slog.Info("GetLastTransaction", "has", hash)
 	}
 
 	txDetails, err := Client.TransactionUTXOs(ctx, hash)
@@ -44,7 +47,19 @@ func GetLastTransaction(ctx context.Context, address string) bfg.TransactionUTXO
 		log.Fatalf("Could not get tx details: \nHASH: %v \nERROR: %v", hash, err)
 	}
 
-	log.Printf("txdetails: %+v", txDetails)
-
 	return txDetails
+}
+
+func GetStakeInfo(ctx context.Context, address string) bfg.Account {
+	addressDetails, err := Client.Address(ctx, address)
+	if err != nil {
+		log.Fatalf("Could not get address details: \nHASH: %v \nERROR: %v", address, err)
+	}
+
+	stakeDetails, err := Client.Account(ctx, *addressDetails.StakeAddress)
+	if err != nil {
+		log.Fatalf("Could not get account details: \nHASH: %v \nERROR: %v", address, err)
+	}
+
+	return stakeDetails
 }

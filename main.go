@@ -15,7 +15,7 @@ import (
 var (
 	GuildID        = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
 	BotToken       = flag.String("token", "", "Bot access token")
-	RemoveCommands = flag.Bool("rmcmd", true, "Remove all commands after shutdowning or not")
+	RemoveCommands = flag.Bool("rmcmd", true, "Remove all commands after shutting down or not")
 )
 
 var s *discordgo.Session
@@ -42,11 +42,13 @@ var (
 	commands = []*discordgo.ApplicationCommand{
 		&discord.ENGAGE_ROLE_COMMAND,
 		&discord.LINK_WALLET_COMMAND,
+		&discord.CHECK_DELEGATION_COMMAND,
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		discord.ENGAGE_ROLE_COMMAND.Name: discord.ENGAGE_ROLE_HANDLER,
-		discord.LINK_WALLET_COMMAND.Name: discord.LINK_WALLET_HANDLER,
+		discord.ENGAGE_ROLE_COMMAND.Name:      discord.ENGAGE_ROLE_HANDLER,
+		discord.LINK_WALLET_COMMAND.Name:      discord.LINK_WALLET_HANDLER,
+		discord.CHECK_DELEGATION_COMMAND.Name: discord.CHECK_DELEGATION_HANDLER,
 	}
 	lockout         = make(map[string]struct{})
 	lockoutResponse = &discordgo.InteractionResponse{
