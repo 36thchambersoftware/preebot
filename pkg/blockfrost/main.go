@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strconv"
 
 	bfg "github.com/blockfrost/blockfrost-go"
 )
@@ -60,4 +61,21 @@ func GetStakeInfo(ctx context.Context, address string) bfg.Account {
 	}
 
 	return stakeDetails
+}
+
+func GetTotalStake(ctx context.Context, wallets []string) int {
+	var totalStake int
+
+	for _, address := range wallets {
+		account := GetStakeInfo(ctx, address)
+		if account.Active && *account.PoolID == PREEB_POOL_ID {
+			stake, err := strconv.Atoi(account.ControlledAmount)
+			if err != nil {
+				log.Fatalf("Could not convert stake to int: \nHASH: %v \nERROR: %v", address, err)
+			}
+			totalStake = totalStake + stake
+		}
+	}
+
+	return totalStake
 }

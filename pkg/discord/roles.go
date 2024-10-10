@@ -1,10 +1,15 @@
 package discord
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"strconv"
+	"text/template"
+	"time"
+
 	"preebot/pkg/blockfrost"
 	"preebot/pkg/preebot"
-
-	bfg "github.com/blockfrost/blockfrost-go"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -39,19 +44,29 @@ func UserHasRole(memberRoles []string, role discordgo.Role) bool {
 }
 
 func ToggleRole(s *discordgo.Session, i *discordgo.InteractionCreate, role *discordgo.Role) error {
+	var response string
 	user_has_role := UserHasRole(i.Member.Roles, *role)
 	if !user_has_role {
 		err := s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
 		if err != nil {
 			return err
 		}
+		response = "Role added: <@&" + role.ID + ">"
 	} else {
 		err := s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, role.ID)
 		if err != nil {
 			return err
 		}
+		response = "Role removed: <@&" + role.ID + ">"
 	}
 
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: response,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
 	return nil
 }
 
@@ -68,19 +83,70 @@ func AssignRoleByRoleName(s *discordgo.Session, i *discordgo.InteractionCreate, 
 	return role, nil
 }
 
-func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, accountDetails bfg.Account) (*discordgo.Role, error) {
-	if *accountDetails.PoolID == blockfrost.PREEB_POOL_ID {
-		roleName := preebot.GetTier(accountDetails.ActiveEpoch, accountDetails.ControlledAmount)
+func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, totalStake int) (*discordgo.Role, error) {
+	roleName := preebot.GetTier(totalStake)
 
-		if roleName != "" {
-			role, err := AssignRoleByRoleName(s, i, roleName)
-			if err != nil {
-				return role, err
-			}
-
-			return role, nil
+	if roleName != "" {
+		role, err := AssignRoleByRoleName(s, i, roleName)
+		if err != nil {
+			return role, err
 		}
+
+		return role, nil
+
 	}
 
 	return nil, nil
+}
+
+func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	user := preebot.LoadUser(i.Member.User.ID)
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	if user.Wallets == nil {
+		content := "You need to link your wallet first. Please use /link-wallet."
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content,
+		})
+	}
+	totalStake := blockfrost.GetTotalStake(ctx, user.Wallets)
+	role, err := AssignDelegatorRole(s, i, totalStake)
+	if err != nil {
+		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: "Something went wrong! Maybe open a #support-ticket ",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+	} else if role != nil {
+		walletWord := "wallet"
+		if len(user.Wallets) > 1 {
+			walletWord = "wallets"
+		}
+
+		walletList := ""
+		for i, addr := range user.Wallets {
+			n := i + 1
+			walletList = walletList + strconv.Itoa(n) + ". -# " + addr + "\n"
+		}
+		var b bytes.Buffer
+		sentence := "After looking at your {{ .walletCount }} {{ .walletWord }}\n{{ .walletList }}You have been assigned a role! <@&{{ .role }}>"
+		partial := template.Must(template.New("check-delegation-template").Parse(sentence))
+		partial.Execute(&b, map[string]interface{}{
+			"walletCount": len(user.Wallets),
+			"walletWord":  walletWord,
+			"walletList":  walletList,
+			"role":        role.ID,
+		})
+
+		content := b.String()
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content,
+		})
+	} else {
+		content := fmt.Sprintf("%+v", role)
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content,
+		})
+	}
 }

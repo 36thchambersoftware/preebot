@@ -16,10 +16,7 @@ var (
 )
 
 var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var (
-		response       string
-		twitterLiaison *discordgo.Role
-	)
+	var twitterLiaison *discordgo.Role
 
 	twitterLiaison, err := FindRoleByName(s, i, ENGAGE_ROLE_NAME)
 	if err != nil {
@@ -30,12 +27,4 @@ var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	if err != nil {
 		log.Fatalf("Could not toggle role: %v", err)
 	}
-
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: response,
-			Flags:   discordgo.MessageFlagsEphemeral,
-		},
-	})
 }

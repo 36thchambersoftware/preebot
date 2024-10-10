@@ -1,7 +1,5 @@
 package preebot
 
-import "strconv"
-
 // Sequential epochs delegated to pool
 const (
 	EpochTier1 = 10
@@ -37,30 +35,28 @@ var Tiers = map[int]string{
 	ADA_TIER_5: CARE_BEAR,
 }
 
-func GetTier(activeEpoch *int64, controlledAmount string) string {
-	balance, _ := strconv.Atoi(controlledAmount)
-
-	if balance >= ADA_TIER_5 {
+func GetTier(controlledAmount int) string {
+	if controlledAmount >= ADA_TIER_5 {
 		return Tiers[ADA_TIER_5]
 	}
 
-	if balance >= ADA_TIER_4 {
+	if controlledAmount >= ADA_TIER_4 {
 		return Tiers[ADA_TIER_4]
 	}
 
-	if balance >= ADA_TIER_3 {
+	if controlledAmount >= ADA_TIER_3 {
 		return Tiers[ADA_TIER_3]
 	}
 
-	if balance >= ADA_TIER_2 {
+	if controlledAmount >= ADA_TIER_2 {
 		return Tiers[ADA_TIER_2]
 	}
 
-	if balance >= ADA_TIER_1 {
+	if controlledAmount >= ADA_TIER_1 {
 		return Tiers[ADA_TIER_1]
 	}
 
-	if balance < ADA_TIER_1 {
+	if controlledAmount < ADA_TIER_1 {
 		return Tiers[ADA_TIER_0]
 	}
 
