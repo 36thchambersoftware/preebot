@@ -110,6 +110,7 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		})
+		return
 	}
 	totalStake := blockfrost.GetTotalStake(ctx, user.Wallets)
 	role, err := AssignDelegatorRole(s, i, totalStake)

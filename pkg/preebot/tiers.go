@@ -56,7 +56,7 @@ func GetTier(controlledAmount int) string {
 		return Tiers[ADA_TIER_1]
 	}
 
-	if controlledAmount < ADA_TIER_1 {
+	if controlledAmount >= ADA_TIER_0 {
 		return Tiers[ADA_TIER_0]
 	}
 
