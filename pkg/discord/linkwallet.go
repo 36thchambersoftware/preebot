@@ -33,7 +33,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "Wallet to link: " + address + "\n\nSend " + LINK_WALLET_AMOUNT_DISPLAY + " ada to yourself. Go ahead, I'll wait a couple minutes. :D",
+			Content: "Wallet to link: " + address + "\n\nSend the following ada to yourself. Go ahead, I'll wait a couple minutes. :D",
 			Flags:   discordgo.MessageFlagsEphemeral,
 			Title:   "Wallet Linker",
 		},
@@ -50,12 +50,25 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		}
 	}
 
+	linkAmtMsg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+		Content: LINK_WALLET_AMOUNT_DISPLAY,
+		Flags:   discordgo.MessageFlagsEphemeral,
+	})
+	if err != nil {
+		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: "Something went wrong! Maybe open a #support-ticket ",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+	}
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Give the user a moment to send the tx before checking for it.
-	time.Sleep(120 * time.Second)
+	time.Sleep(1 * time.Second)
+
+	s.ChannelMessageDelete(i.ChannelID, linkAmtMsg.ID)
 
 	msg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: "I'll check to see if your transaction is on the blockchain now.",
@@ -97,6 +110,11 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		}
 
 		preebot.SaveUser(user)
+	} else {
+		content := "I couldn't verify your address. Maybe the transaction isn't on the blockchain yet. Try the /link-wallet command again when your transaction is complete. If it still doesn't work, open a ticket and we'll figure it out."
+		s.FollowupMessageEdit(i.Interaction, msg.ID, &discordgo.WebhookEdit{
+			Content: &content,
+		})
 	}
 
 	CheckDelegation(s, i)
