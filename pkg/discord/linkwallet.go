@@ -2,6 +2,7 @@ package discord
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"preebot/pkg/blockfrost"
@@ -79,7 +80,14 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		})
 	}
 
-	txDetails := blockfrost.GetLastTransaction(ctx, address)
+	txDetails, err := blockfrost.GetLastTransaction(ctx, address)
+	if err != nil {
+		content := fmt.Sprintf("Something went wrong! Maybe open a #support-ticket: %v", err)
+		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: content,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+	}
 	walletLinked := false
 
 	for _, output := range txDetails.Outputs {

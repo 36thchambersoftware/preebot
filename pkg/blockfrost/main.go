@@ -29,11 +29,12 @@ func init() {
 	Client = bfg.NewAPIClient(bfg.APIClientOptions{ProjectID: blockfrostProjectID})
 }
 
-func GetLastTransaction(ctx context.Context, address string) bfg.TransactionUTXOs {
+func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTXOs, error) {
 	APIQueryParams.Order = "desc"
 	txs, err := Client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
-		log.Fatalf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
+		log.Printf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
+		return bfg.TransactionUTXOs{}, err
 	}
 
 	var hash string
@@ -43,10 +44,10 @@ func GetLastTransaction(ctx context.Context, address string) bfg.TransactionUTXO
 
 	txDetails, err := Client.TransactionUTXOs(ctx, hash)
 	if err != nil {
-		log.Fatalf("Could not get tx details: \nHASH: %v \nERROR: %v", hash, err)
+		log.Printf("Could not get tx details: \nHASH: %v \nERROR: %v", hash, err)
 	}
 
-	return txDetails
+	return txDetails, nil
 }
 
 func GetStakeInfo(ctx context.Context, address string) bfg.Account {
@@ -78,4 +79,13 @@ func GetTotalStake(ctx context.Context, wallets []string) int {
 	}
 
 	return totalStake
+}
+
+func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, error) {
+	metaData, err := Client.PoolMetadata(ctx, poolID)
+	if err != nil {
+		return bfg.PoolMetadata{}, err
+	}
+
+	return metaData, nil
 }

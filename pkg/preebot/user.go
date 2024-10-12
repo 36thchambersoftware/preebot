@@ -30,15 +30,15 @@ func LoadUser(userID string) User {
 		log.Fatalf("Cannot read user file: %v", err)
 	}
 
-	UserData := User{}
+	userData := User{}
 	if n > 0 {
-		err = json.Unmarshal(userJson, &UserData)
+		err = json.Unmarshal(userJson, &userData)
 		if err != nil {
 			log.Fatalf("Cannot unmarshal user file: %v", err)
 		}
 	}
 
-	return UserData
+	return userData
 }
 
 func SaveUser(user User) {
