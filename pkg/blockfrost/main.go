@@ -89,3 +89,12 @@ func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, erro
 
 	return metaData, nil
 }
+
+func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy, error) {
+	assets, err := Client.AssetsByPolicy(ctx, policyID)
+	if err != nil {
+		return []bfg.AssetByPolicy{}, err
+	}
+
+	return assets, nil
+}

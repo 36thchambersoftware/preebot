@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	PoolID string `json:"poolid,omitempty"`
+	PoolID   string `json:"poolid,omitempty"`
+	PolicyID string `json:"policyid,omitempty"`
 }
 
 const CONFIG_FILE = "config.json"
