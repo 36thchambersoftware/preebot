@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 
 	"preebot/pkg/preebot"
 
@@ -72,14 +73,13 @@ func GetStakeInfo(ctx context.Context, stakeAddress string) bfg.Account {
 	return stakeDetails
 }
 
-func GetTotalStake(ctx context.Context, wallets preebot.Wallets) int {
-	config := preebot.LoadConfig()
+func GetTotalStake(ctx context.Context, poolIDs preebot.PoolID, wallets preebot.Wallets) int {
 	var totalStake int
 
 	accounts := maps.Keys(wallets)
 	for _, stakeAddress := range accounts {
 		account := GetStakeInfo(ctx, string(stakeAddress))
-		if account.Active && config.PoolID[*account.PoolID] {
+		if account.Active && poolIDs[*account.PoolID] {
 			stake, err := strconv.Atoi(account.ControlledAmount)
 			if err != nil {
 				log.Fatalf("Could not convert stake to int: \nSTAKE: %v \nERROR: %v", stake, err)
@@ -109,17 +109,61 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 	return assets, nil
 }
 
-func CountUserAssetsByPolicy(ctx context.Context, policyIDs preebot.PolicyID, wallets []string) (int, error) {
-	var totalNfts int
+func GetAllUserAddresses(ctx context.Context, wallets preebot.Wallets) ([]bfg.Address, error) {
 	var allAddresses []bfg.Address
 	for _, wallet := range wallets {
-		address, err := client.Address(ctx, wallet)
-		if err != nil {
-			return 0, err
-		}
+		for _, addr := range wallet {
+			address, err := client.Address(ctx, string(addr))
+			if err != nil {
+				return nil, err
+			}
 
-		allAddresses = append(allAddresses, address)
+			allAddresses = append(allAddresses, address)
+		}
 	}
 
-	return totalNfts, nil
+	return allAddresses, nil
+}
+
+func CountUserAssetsByPolicy(policyIDs preebot.PolicyID, allAddresses []bfg.Address) int {
+	totalNfts := 0
+
+	for _, address := range allAddresses {
+		for _, utxo := range address.Amount {
+			for policyID := range policyIDs {
+				if strings.HasPrefix(utxo.Unit, policyID) {
+					totalNfts++
+				}
+			}
+		}
+	}
+
+	return totalNfts
+
+	// {
+	// 	"asset": "78dea0d35c9ac1f554066ab4491b0862c2482bdf617e0ba81414d51c000de140546972656c657373576f726b657230313033",
+	// 	"policy_id": "78dea0d35c9ac1f554066ab4491b0862c2482bdf617e0ba81414d51c",
+	// 	"asset_name": "000de140546972656c657373576f726b657230313033",
+	// 	"fingerprint": "asset1w42x7zwpee4t28y8nzss0cteg6wahvkav7a8u2",
+	// 	"quantity": "1",
+	// 	"initial_mint_tx_hash": "a632fae151ba7c5748513f747db4f441336a5aa022d595c4ab826b1c6ed38a9c",
+	// 	"mint_or_burn_count": 1,
+	// 	"onchain_metadata": {
+	// 	  "name": "Tireless Worker #0103",
+	// 	  "mediaType": "image/jpeg",
+	// 	  "image": "ipfs://bafybeib3lggegs6cpfx3hecc3l2umzewr4tgip725eu364qjbeqhihgj7y",
+	// 	  "Rarity": "46436f6d6d6f6e",
+	// 	  "Headgear": "494865616470686f6e65",
+	// 	  "Background": "4d436f6d6d6f6e2059656c6c6f77",
+	// 	  "Eyes": "47476c6173736573",
+	// 	  "Chest": "4750656173616e74",
+	// 	  "Tool": "465363726f6c6c",
+	// 	  "Facial hair": "45506c61696e",
+	// 	  "Speciality": "424f47",
+	// 	  "description": "Main collection of the Necro League. "
+	// 	},
+	// 	"onchain_metadata_standard": "CIP68v1",
+	// 	"onchain_metadata_extra": null,
+	// 	"metadata": null
+	//   }
 }

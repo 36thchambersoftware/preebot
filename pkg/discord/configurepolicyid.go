@@ -67,8 +67,8 @@ var CONFIGURE_POLICY_ID_HANDLER = func(s *discordgo.Session, i *discordgo.Intera
 
 	content := b.String()
 
-	config := preebot.LoadConfig()
-	config.PolicyID[policyID] = true
+	config := preebot.LoadConfig(i.GuildID)
+	config.PolicyIDs[policyID] = true
 	preebot.SaveConfig(config)
 
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{

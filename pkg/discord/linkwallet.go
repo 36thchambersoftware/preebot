@@ -126,12 +126,13 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		})
 	}
 
-	config := preebot.LoadConfig()
+	config := preebot.LoadConfig(i.GuildID)
 
-	if config.PoolID != nil {
+	if config.PoolIDs != nil {
 		CheckDelegation(s, i)
 	}
 
-	if config.PolicyID != nil {
-	}
+	// if config.PolicyIDs != nil {
+	// 	CheckAssets(s, i)
+	// }
 }

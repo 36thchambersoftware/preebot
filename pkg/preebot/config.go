@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type Config struct {
-	PoolID   PoolID   `json:"poolids,omitempty"`
-	PolicyID PolicyID `json:"policyids,omitempty"`
+	PoolIDs    PoolID   `json:"poolids,omitempty"`
+	PolicyIDs  PolicyID `json:"policyids,omitempty"`
+	EngageRole string   `json:"engagerole,omitempty"`
+	GuildID    string   `json:"guildid,omitempty"`
 }
 
 type (
@@ -16,10 +19,14 @@ type (
 	PolicyID map[string]bool
 )
 
-const CONFIG_FILE = "config.json"
+const (
+	CONFIG_FILE_SUFFIX = "-config.json"
+	CONFIG_FILE_PREFIX = "config"
+)
 
-func LoadConfig() Config {
-	file, err := os.OpenFile(CONFIG_FILE, os.O_RDWR|os.O_CREATE, 0o644)
+func LoadConfig(gID string) Config {
+	filename := filepath.Join(CONFIG_FILE_PREFIX, gID+CONFIG_FILE_SUFFIX)
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Cannot open config file: %v", err)
 	}
@@ -43,19 +50,24 @@ func LoadConfig() Config {
 		}
 	}
 
-	if config.PoolID == nil {
-		config.PoolID = make(PoolID)
+	if config.GuildID == "" {
+		config.GuildID = gID
 	}
 
-	if config.PolicyID == nil {
-		config.PolicyID = make(PolicyID)
+	if config.PoolIDs == nil {
+		config.PoolIDs = make(PoolID)
+	}
+
+	if config.PolicyIDs == nil {
+		config.PolicyIDs = make(PolicyID)
 	}
 
 	return config
 }
 
 func SaveConfig(config Config) {
-	file, err := os.OpenFile(CONFIG_FILE, os.O_RDWR|os.O_CREATE, 0o644)
+	filename := filepath.Join(CONFIG_FILE_PREFIX, config.GuildID+CONFIG_FILE_SUFFIX)
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Cannot open config file: %v", err)
 	}

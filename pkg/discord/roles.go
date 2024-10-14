@@ -101,6 +101,7 @@ func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, t
 
 func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	user := preebot.LoadUser(i.Member.User.ID)
+	config := preebot.LoadConfig(i.GuildID)
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
@@ -112,7 +113,7 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		})
 		return
 	}
-	totalStake := blockfrost.GetTotalStake(ctx, user.Wallets)
+	totalStake := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
 	role, err := AssignDelegatorRole(s, i, totalStake)
 	if err != nil {
 		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
@@ -157,9 +158,9 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 
 func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	user := preebot.LoadUser(i.Member.User.ID)
-	config := preebot.LoadConfig()
+	config := preebot.LoadConfig(i.GuildID)
 
-	if user.Wallets == nil {
+	if len(user.Wallets) == 0 {
 		content := "You need to link your wallet first. Please use /link-wallet."
 		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
@@ -167,7 +168,7 @@ func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	if config.PolicyID == nil {
+	if len(config.PolicyIDs) == 0 {
 		content := "The administrator needs to set the policy ID first."
 		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
@@ -175,9 +176,19 @@ func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// ctx := context.Background()
-	// ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-	// defer cancel()
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
 
-	// assetCount, err := blockfrost.CountUserAssetsByPolicy(ctx, user.Wallets)
+	allAddresses, err := blockfrost.GetAllUserAddresses(ctx, user.Wallets)
+	if err != nil {
+		// TODO
+	}
+
+	assetCount := blockfrost.CountUserAssetsByPolicy(config.PolicyIDs, allAddresses)
+
+	content := fmt.Sprintf("You have %d nfts associated with the policy IDs of this server", assetCount)
+	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &content,
+	})
 }
