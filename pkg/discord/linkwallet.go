@@ -69,7 +69,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	defer cancel()
 
 	// Give the user a moment to send the tx before checking for it.
-	time.Sleep(1 * time.Second)
+	time.Sleep(120 * time.Second)
 
 	content := "I'll check to see if your transaction is on the blockchain now."
 	msg, err := s.FollowupMessageEdit(i.Interaction, linkAmtMsg.ID, &discordgo.WebhookEdit{
