@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type User struct {
@@ -23,7 +24,8 @@ func (a Address) String() string {
 }
 
 func LoadUser(userID string) User {
-	filename := userID + ".json"
+	filename := filepath.Join("data", userID+".json")
+	// filename := "data/" + userID + ".json"
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Cannot open user file: %v", err)
@@ -56,7 +58,7 @@ func LoadUser(userID string) User {
 }
 
 func SaveUser(user User) {
-	filename := user.ID + ".json"
+	filename := filepath.Join("data", user.ID+".json")
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Cannot open user file: %v", err)

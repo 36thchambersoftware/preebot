@@ -105,7 +105,7 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	if user.Wallets == nil {
+	if len(user.Wallets) == 0 {
 		content := "You need to link your wallet first. Please use /link-wallet."
 		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
