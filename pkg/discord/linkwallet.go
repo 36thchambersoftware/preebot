@@ -42,12 +42,14 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 
 	user := preebot.LoadUser(i.Member.User.ID)
 	for _, wallet := range user.Wallets {
-		if address == wallet {
-			content := "Your wallet has already been linked! But feel free to link another."
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &content,
-			})
-			return
+		for _, addr := range wallet {
+			if address == addr.String() {
+				content := "Your wallet has already been linked! But feel free to link another."
+				s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+					Content: &content,
+				})
+				return
+			}
 		}
 	}
 
@@ -67,7 +69,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	defer cancel()
 
 	// Give the user a moment to send the tx before checking for it.
-	time.Sleep(120 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	content := "I'll check to see if your transaction is on the blockchain now."
 	msg, err := s.FollowupMessageEdit(i.Interaction, linkAmtMsg.ID, &discordgo.WebhookEdit{
@@ -105,7 +107,8 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	}
 
 	if walletLinked {
-		user.Wallets = append(user.Wallets, address)
+		account := blockfrost.GetAccountByAddress(ctx, address)
+		user.Wallets[preebot.StakeAddress(account.StakeAddress)] = append(user.Wallets[preebot.StakeAddress(account.StakeAddress)], preebot.Address(address))
 
 		if user.ID == "" {
 			user.ID = i.Member.User.ID
@@ -123,5 +126,12 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		})
 	}
 
-	CheckDelegation(s, i)
+	config := preebot.LoadConfig()
+
+	if config.PoolID != nil {
+		CheckDelegation(s, i)
+	}
+
+	if config.PolicyID != nil {
+	}
 }

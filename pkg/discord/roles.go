@@ -126,9 +126,12 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 
 		walletList := ""
-		for i, addr := range user.Wallets {
-			n := i + 1
-			walletList = walletList + strconv.Itoa(n) + ". -# " + addr + "\n"
+		n := 0
+		for _, stakeAddress := range user.Wallets {
+			for _, addr := range stakeAddress {
+				n++
+				walletList = walletList + strconv.Itoa(n) + ". -# " + string(addr) + "\n"
+			}
 		}
 		var b bytes.Buffer
 		sentence := "After looking at your {{ .walletCount }} {{ .walletWord }}\n{{ .walletList }}You have been assigned a role! <@&{{ .role }}>"
@@ -150,4 +153,31 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			Content: &content,
 		})
 	}
+}
+
+func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	user := preebot.LoadUser(i.Member.User.ID)
+	config := preebot.LoadConfig()
+
+	if user.Wallets == nil {
+		content := "You need to link your wallet first. Please use /link-wallet."
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content,
+		})
+		return
+	}
+
+	if config.PolicyID == nil {
+		content := "The administrator needs to set the policy ID first."
+		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content,
+		})
+		return
+	}
+
+	// ctx := context.Background()
+	// ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	// defer cancel()
+
+	// assetCount, err := blockfrost.CountUserAssetsByPolicy(ctx, user.Wallets)
 }

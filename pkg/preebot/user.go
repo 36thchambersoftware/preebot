@@ -7,9 +7,19 @@ import (
 )
 
 type User struct {
-	ID          string   `json:"id,omitempty"`
-	DisplayName string   `json:"display_name,omitempty"`
-	Wallets     []string `json:"wallets,omitempty"`
+	ID          string  `json:"id,omitempty"`
+	DisplayName string  `json:"display_name,omitempty"`
+	Wallets     Wallets `json:"wallets,omitempty"`
+}
+
+type (
+	Wallets      map[StakeAddress][]Address
+	StakeAddress string
+	Address      string
+)
+
+func (a Address) String() string {
+	return string(a)
 }
 
 func LoadUser(userID string) User {
@@ -30,12 +40,16 @@ func LoadUser(userID string) User {
 		log.Fatalf("Cannot read user file: %v", err)
 	}
 
-	userData := User{}
+	var userData User
 	if n > 0 {
 		err = json.Unmarshal(userJson, &userData)
 		if err != nil {
 			log.Fatalf("Cannot unmarshal user file: %v", err)
 		}
+	}
+
+	if userData.Wallets == nil {
+		userData.Wallets = make(Wallets)
 	}
 
 	return userData

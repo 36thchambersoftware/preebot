@@ -7,9 +7,14 @@ import (
 )
 
 type Config struct {
-	PoolID   string `json:"poolid,omitempty"`
-	PolicyID string `json:"policyid,omitempty"`
+	PoolID   PoolID   `json:"poolids,omitempty"`
+	PolicyID PolicyID `json:"policyids,omitempty"`
 }
+
+type (
+	PoolID   map[string]bool
+	PolicyID map[string]bool
+)
 
 const CONFIG_FILE = "config.json"
 
@@ -30,12 +35,20 @@ func LoadConfig() Config {
 		log.Fatalf("Cannot read config file: %v", err)
 	}
 
-	config := Config{}
+	var config Config
 	if n > 0 {
 		err = json.Unmarshal(configJson, &config)
 		if err != nil {
 			log.Fatalf("Cannot unmarshal config file: %v", err)
 		}
+	}
+
+	if config.PoolID == nil {
+		config.PoolID = make(PoolID)
+	}
+
+	if config.PolicyID == nil {
+		config.PolicyID = make(PolicyID)
 	}
 
 	return config

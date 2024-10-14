@@ -7,17 +7,19 @@ import (
 	"os"
 	"strconv"
 
+	"preebot/pkg/preebot"
+
 	bfg "github.com/blockfrost/blockfrost-go"
+	"golang.org/x/exp/maps"
 )
 
 var (
-	Client         bfg.APIClient
+	client         bfg.APIClient
 	APIQueryParams bfg.APIQueryParams
 )
 
 const (
-	LOVELACE      = 1_000_000
-	PREEB_POOL_ID = "pool19peeq2czwunkwe3s70yuvwpsrqcyndlqnxvt67usz98px57z7fk"
+	LOVELACE = 1_000_000
 )
 
 func init() {
@@ -26,12 +28,12 @@ func init() {
 		slog.Error("Could not get blockfrost project id")
 	}
 
-	Client = bfg.NewAPIClient(bfg.APIClientOptions{ProjectID: blockfrostProjectID})
+	client = bfg.NewAPIClient(bfg.APIClientOptions{ProjectID: blockfrostProjectID})
 }
 
 func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTXOs, error) {
 	APIQueryParams.Order = "desc"
-	txs, err := Client.AddressTransactions(ctx, address, APIQueryParams)
+	txs, err := client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
 		log.Printf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
 		return bfg.TransactionUTXOs{}, err
@@ -42,7 +44,7 @@ func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTX
 		hash = txs[0].TxHash
 	}
 
-	txDetails, err := Client.TransactionUTXOs(ctx, hash)
+	txDetails, err := client.TransactionUTXOs(ctx, hash)
 	if err != nil {
 		log.Printf("Could not get tx details: \nHASH: %v \nERROR: %v", hash, err)
 	}
@@ -50,29 +52,37 @@ func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTX
 	return txDetails, nil
 }
 
-func GetStakeInfo(ctx context.Context, address string) bfg.Account {
-	addressDetails, err := Client.Address(ctx, address)
+func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
+	stakeDetails, err := client.Address(ctx, address)
 	if err != nil {
-		log.Fatalf("Could not get address details: \nHASH: %v \nERROR: %v", address, err)
+		log.Printf("Could not get account details: \aADDRESS: %v \nERROR: %v", address, err)
 	}
 
-	stakeDetails, err := Client.Account(ctx, *addressDetails.StakeAddress)
+	account := GetStakeInfo(ctx, *stakeDetails.StakeAddress)
+
+	return account
+}
+
+func GetStakeInfo(ctx context.Context, stakeAddress string) bfg.Account {
+	stakeDetails, err := client.Account(ctx, stakeAddress)
 	if err != nil {
-		log.Fatalf("Could not get account details: \nHASH: %v \nERROR: %v", address, err)
+		log.Printf("Could not get account details: \nSTAKEADDR: %v \nERROR: %v", stakeAddress, err)
 	}
 
 	return stakeDetails
 }
 
-func GetTotalStake(ctx context.Context, wallets []string) int {
+func GetTotalStake(ctx context.Context, wallets preebot.Wallets) int {
+	config := preebot.LoadConfig()
 	var totalStake int
 
-	for _, address := range wallets {
-		account := GetStakeInfo(ctx, address)
-		if account.Active && *account.PoolID == PREEB_POOL_ID {
+	accounts := maps.Keys(wallets)
+	for _, stakeAddress := range accounts {
+		account := GetStakeInfo(ctx, string(stakeAddress))
+		if account.Active && config.PoolID[*account.PoolID] {
 			stake, err := strconv.Atoi(account.ControlledAmount)
 			if err != nil {
-				log.Fatalf("Could not convert stake to int: \nHASH: %v \nERROR: %v", address, err)
+				log.Fatalf("Could not convert stake to int: \nSTAKE: %v \nERROR: %v", stake, err)
 			}
 			totalStake = totalStake + stake
 		}
@@ -82,7 +92,7 @@ func GetTotalStake(ctx context.Context, wallets []string) int {
 }
 
 func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, error) {
-	metaData, err := Client.PoolMetadata(ctx, poolID)
+	metaData, err := client.PoolMetadata(ctx, poolID)
 	if err != nil {
 		return bfg.PoolMetadata{}, err
 	}
@@ -91,10 +101,25 @@ func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, erro
 }
 
 func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy, error) {
-	assets, err := Client.AssetsByPolicy(ctx, policyID)
+	assets, err := client.AssetsByPolicy(ctx, policyID)
 	if err != nil {
 		return []bfg.AssetByPolicy{}, err
 	}
 
 	return assets, nil
+}
+
+func CountUserAssetsByPolicy(ctx context.Context, policyIDs preebot.PolicyID, wallets []string) (int, error) {
+	var totalNfts int
+	var allAddresses []bfg.Address
+	for _, wallet := range wallets {
+		address, err := client.Address(ctx, wallet)
+		if err != nil {
+			return 0, err
+		}
+
+		allAddresses = append(allAddresses, address)
+	}
+
+	return totalNfts, nil
 }
