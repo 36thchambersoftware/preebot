@@ -8,16 +8,30 @@ import (
 )
 
 type Config struct {
-	PoolIDs    PoolID   `json:"poolids,omitempty"`
-	PolicyIDs  PolicyID `json:"policyids,omitempty"`
-	EngageRole string   `json:"engagerole,omitempty"`
-	GuildID    string   `json:"guildid,omitempty"`
+	DelegatorRoles DelegatorRoles `json:"delegatorroles,omitempty"`
+	PoolIDs        PoolID         `json:"poolids,omitempty"`
+	PolicyIDs      PolicyID       `json:"policyids,omitempty"`
+	EngageRole     string         `json:"engagerole,omitempty"`
+	GuildID        string         `json:"guildid,omitempty"`
 }
 
 type (
 	PoolID   map[string]bool
 	PolicyID map[string]bool
 )
+
+type DelegatorRoles map[string]DelegatorRoleBounds
+
+type DelegatorRoleBounds struct {
+	Min Bound
+	Max Bound
+}
+
+func (drb DelegatorRoleBounds) IsValid() bool {
+	return drb.Max > drb.Min
+}
+
+type Bound int64
 
 const (
 	CONFIG_FILE_SUFFIX = "-config.json"
@@ -52,6 +66,10 @@ func LoadConfig(gID string) Config {
 
 	if config.GuildID == "" {
 		config.GuildID = gID
+	}
+
+	if config.DelegatorRoles == nil {
+		config.DelegatorRoles = make(DelegatorRoles)
 	}
 
 	if config.PoolIDs == nil {

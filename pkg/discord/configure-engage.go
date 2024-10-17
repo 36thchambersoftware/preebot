@@ -11,7 +11,7 @@ import (
 var CONFIGURE_ENGAGE_ROLE_COMMAND = discordgo.ApplicationCommand{
 	Version:                  "0.01",
 	Name:                     "configure-engage-role",
-	Description:              "Set roles based on pool/policy",
+	Description:              "Set which role is associated with engage",
 	DefaultMemberPermissions: &ADMIN,
 	Options: []*discordgo.ApplicationCommandOption{
 		{

@@ -21,7 +21,7 @@ var CONFIGURE_POLICY_ID_COMMAND = discordgo.ApplicationCommand{
 	Options: []*discordgo.ApplicationCommandOption{{
 		Type:        discordgo.ApplicationCommandOptionString,
 		Name:        "policyid",
-		Description: "The policy ID to link to your discord",
+		Description: "The a policy ID to link to your discord",
 		Required:    true,
 		MaxLength:   255,
 	}},
