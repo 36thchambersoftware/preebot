@@ -3,6 +3,8 @@ package discord
 import (
 	"log"
 
+	"preebot/pkg/preebot"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -16,14 +18,15 @@ var (
 )
 
 var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var twitterLiaison *discordgo.Role
+	var engageRole *discordgo.Role
+	config := preebot.LoadConfig(i.GuildID)
 
-	twitterLiaison, err := FindRoleByName(s, i, ENGAGE_ROLE_NAME)
+	engageRole, err := FindRoleByRoleID(s, i, config.EngageRole)
 	if err != nil {
 		log.Fatalf("Could not find role: %v", err)
 	}
 
-	err = ToggleRole(s, i, twitterLiaison)
+	err = ToggleRole(s, i, engageRole)
 	if err != nil {
 		log.Fatalf("Could not toggle role: %v", err)
 	}

@@ -31,6 +31,23 @@ func FindRoleByName(s *discordgo.Session, i *discordgo.InteractionCreate, name s
 	return desiredRole, nil
 }
 
+func FindRoleByRoleID(s *discordgo.Session, i *discordgo.InteractionCreate, id string) (*discordgo.Role, error) {
+	var desiredRole *discordgo.Role
+
+	perms, err := s.GuildRoles(i.GuildID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, role := range perms {
+		if role.ID == id {
+			desiredRole = role
+		}
+	}
+
+	return desiredRole, nil
+}
+
 func UserHasRole(memberRoles []string, role discordgo.Role) bool {
 	var user_has_role bool
 	for _, r := range memberRoles {
