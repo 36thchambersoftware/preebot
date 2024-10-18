@@ -23,6 +23,11 @@ const (
 	LOVELACE = 1_000_000
 )
 
+type (
+	Lovelace int
+	Ada      int
+)
+
 func init() {
 	blockfrostProjectID, ok := os.LookupEnv("BLOCKFROST_PROJECT_ID")
 	if !ok {
@@ -73,7 +78,7 @@ func GetStakeInfo(ctx context.Context, stakeAddress string) bfg.Account {
 	return stakeDetails
 }
 
-func GetTotalStake(ctx context.Context, poolIDs preebot.PoolID, wallets preebot.Wallets) int {
+func GetTotalStake(ctx context.Context, poolIDs preebot.PoolID, wallets preebot.Wallets) Ada {
 	var totalStake int
 
 	accounts := maps.Keys(wallets)
@@ -88,7 +93,9 @@ func GetTotalStake(ctx context.Context, poolIDs preebot.PoolID, wallets preebot.
 		}
 	}
 
-	return totalStake
+	totalAda := totalStake / LOVELACE
+
+	return Ada(totalAda)
 }
 
 func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, error) {

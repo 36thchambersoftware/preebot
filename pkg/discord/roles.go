@@ -100,20 +100,35 @@ func AssignRoleByRoleName(s *discordgo.Session, i *discordgo.InteractionCreate, 
 	return role, nil
 }
 
-func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, totalStake int) (*discordgo.Role, error) {
-	roleName := preebot.GetTier(totalStake)
-
-	if roleName != "" {
-		role, err := AssignRoleByRoleName(s, i, roleName)
-		if err != nil {
-			return role, err
-		}
-
-		return role, nil
-
+func AssignRoleByID(s *discordgo.Session, i *discordgo.InteractionCreate, roleID string) (*discordgo.Role, error) {
+	role, err := FindRoleByRoleID(s, i, roleID)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
+	if err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
+func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, totalStake int) ([]*discordgo.Role, error) {
+	config := preebot.LoadConfig(i.GuildID)
+	roleIDs := preebot.GetDelegatorRolesByStake(totalStake, config.DelegatorRoles)
+	var assignedRoles []*discordgo.Role
+	if roleIDs != nil {
+		for _, roleID := range roleIDs {
+			role, err := AssignRoleByID(s, i, roleID)
+			if err != nil {
+				return nil, err
+			}
+
+			assignedRoles = append(assignedRoles, role)
+		}
+	}
+
+	return assignedRoles, nil
 }
 
 func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -130,47 +145,54 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		})
 		return
 	}
-	totalStake := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
-	role, err := AssignDelegatorRole(s, i, totalStake)
+	totalAda := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
+	roles, err := AssignDelegatorRole(s, i, int(totalAda))
 	if err != nil {
 		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Something went wrong! Maybe open a #support-ticket ",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		})
-	} else if role != nil {
-		walletWord := "wallet"
-		if len(user.Wallets) > 1 {
-			walletWord = "wallets"
-		}
 
-		walletList := ""
-		n := 0
-		for _, stakeAddress := range user.Wallets {
-			for _, addr := range stakeAddress {
-				n++
-				walletList = walletList + strconv.Itoa(n) + ". -# " + string(addr) + "\n"
-			}
-		}
-		var b bytes.Buffer
-		sentence := "After looking at your {{ .walletCount }} {{ .walletWord }}\n{{ .walletList }}You have been assigned a role! <@&{{ .role }}>"
-		partial := template.Must(template.New("check-delegation-template").Parse(sentence))
-		partial.Execute(&b, map[string]interface{}{
-			"walletCount": len(user.Wallets),
-			"walletWord":  walletWord,
-			"walletList":  walletList,
-			"role":        role.ID,
-		})
-
-		content := b.String()
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &content,
-		})
-	} else {
-		content := fmt.Sprintf("%+v", role)
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &content,
-		})
+		return
 	}
+
+	walletWord := "wallet"
+	if len(user.Wallets) > 1 {
+		walletWord = "wallets"
+	}
+
+	walletList := ""
+	n := 0
+	for _, stakeAddress := range user.Wallets {
+		for _, addr := range stakeAddress {
+			n++
+			walletList = walletList + strconv.Itoa(n) + ". -# " + string(addr) + "\n"
+		}
+	}
+
+	var b bytes.Buffer
+	sentence := "After looking at your {{ .walletCount }} {{ .walletWord }}\n{{ .walletList }}"
+
+	if roles != nil {
+		sentence = sentence + "You have been assigned the following!\n"
+		for _, role := range roles {
+			sentence = sentence + "<@&" + role.ID + ">\n"
+		}
+	} else {
+		sentence = sentence + "You don't qualify for any roles."
+	}
+
+	partial := template.Must(template.New("check-delegation-template").Parse(sentence))
+	partial.Execute(&b, map[string]interface{}{
+		"walletCount": len(user.Wallets),
+		"walletWord":  walletWord,
+		"walletList":  walletList,
+	})
+
+	content := b.String()
+	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &content,
+	})
 }
 
 func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {

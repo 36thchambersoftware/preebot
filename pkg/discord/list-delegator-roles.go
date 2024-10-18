@@ -28,7 +28,6 @@ var LIST_DELEGATOR_ROLES_HANDLER = func(s *discordgo.Session, i *discordgo.Inter
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: sentence,
-			Flags:   discordgo.MessageFlagsEphemeral,
 			Title:   "List Delegator Roles",
 		},
 	})

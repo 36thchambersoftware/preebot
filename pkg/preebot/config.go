@@ -35,11 +35,11 @@ type Bound int64
 
 const (
 	CONFIG_FILE_SUFFIX = "-config.json"
-	CONFIG_FILE_PREFIX = "config"
+	CONFIG_FILE_PATH   = "config"
 )
 
 func LoadConfig(gID string) Config {
-	filename := filepath.Join(CONFIG_FILE_PREFIX, gID+CONFIG_FILE_SUFFIX)
+	filename := filepath.Join(CONFIG_FILE_PATH, gID+CONFIG_FILE_SUFFIX)
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Cannot open config file: %v", err)
@@ -84,7 +84,7 @@ func LoadConfig(gID string) Config {
 }
 
 func SaveConfig(config Config) {
-	filename := filepath.Join(CONFIG_FILE_PREFIX, config.GuildID+CONFIG_FILE_SUFFIX)
+	filename := filepath.Join(CONFIG_FILE_PATH, config.GuildID+CONFIG_FILE_SUFFIX)
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Cannot open config file: %v", err)
