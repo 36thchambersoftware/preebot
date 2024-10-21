@@ -31,6 +31,25 @@ var (
 var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := GetOptions(i)
 	address := options["address"].StringValue()
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	address, err := blockfrost.HandleAddress(ctx, address)
+	if err != nil {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("Uh oh! %v", err),
+				Flags:   discordgo.MessageFlagsEphemeral,
+				Title:   "Wallet Linker",
+			},
+		})
+
+		return
+	}
+
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -63,10 +82,6 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 			Flags:   discordgo.MessageFlagsEphemeral,
 		})
 	}
-
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	// Give the user a moment to send the tx before checking for it.
 	time.Sleep(120 * time.Second)

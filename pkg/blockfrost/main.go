@@ -2,6 +2,7 @@ package blockfrost
 
 import (
 	"context"
+	"encoding/hex"
 	"log"
 	"log/slog"
 	"os"
@@ -20,7 +21,10 @@ var (
 )
 
 const (
-	LOVELACE = 1_000_000
+	LOVELACE             = 1_000_000
+	ADA_HANDLE_PREFIX    = "$"
+	ADA_HANDLE_POLICY_ID = "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+	CIP68v1_NONSENSE     = "000de140"
 )
 
 type (
@@ -173,4 +177,24 @@ func CountUserAssetsByPolicy(policyIDs preebot.PolicyID, allAddresses []bfg.Addr
 	// 	"onchain_metadata_extra": null,
 	// 	"metadata": null
 	//   }
+}
+
+// Convert ADA Handle address
+func HandleAddress(ctx context.Context, addr string) (string, error) {
+	isAdaHandle := strings.HasPrefix(addr, ADA_HANDLE_PREFIX)
+	if isAdaHandle {
+		hexAddr := hex.EncodeToString([]byte(addr[1:]))
+		assetName := ADA_HANDLE_POLICY_ID + CIP68v1_NONSENSE + hexAddr
+		addresses, err := client.AssetAddresses(ctx, assetName, APIQueryParams)
+		if err != nil {
+			return "", err
+		}
+
+		if len(addresses) > 0 {
+			return addresses[0].Address, nil
+		}
+
+	}
+
+	return addr, nil
 }
