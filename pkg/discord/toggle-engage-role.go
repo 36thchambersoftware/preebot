@@ -21,12 +21,12 @@ var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	var engageRole *discordgo.Role
 	config := preebot.LoadConfig(i.GuildID)
 
-	engageRole, err := FindRoleByRoleID(s, i, config.EngageRole)
+	engageRole, err := FindRoleByRoleID(i.GuildID, config.EngageRole)
 	if err != nil {
 		log.Fatalf("Could not find role: %v", err)
 	}
 
-	err = ToggleRole(s, i, engageRole)
+	err = ToggleRole(i, engageRole)
 	if err != nil {
 		log.Fatalf("Could not toggle role: %v", err)
 	}

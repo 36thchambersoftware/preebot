@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"text/template"
 	"time"
@@ -12,12 +13,13 @@ import (
 	"preebot/pkg/preebot"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/exp/slog"
 )
 
-func FindRoleByName(s *discordgo.Session, i *discordgo.InteractionCreate, name string) (*discordgo.Role, error) {
+func FindRoleByName(i *discordgo.InteractionCreate, name string) (*discordgo.Role, error) {
 	var desiredRole *discordgo.Role
 
-	perms, err := s.GuildRoles(i.GuildID)
+	perms, err := S.GuildRoles(i.GuildID)
 	if err != nil {
 		return nil, err
 	}
@@ -31,10 +33,10 @@ func FindRoleByName(s *discordgo.Session, i *discordgo.InteractionCreate, name s
 	return desiredRole, nil
 }
 
-func FindRoleByRoleID(s *discordgo.Session, i *discordgo.InteractionCreate, id string) (*discordgo.Role, error) {
+func FindRoleByRoleID(guildID, id string) (*discordgo.Role, error) {
 	var desiredRole *discordgo.Role
 
-	perms, err := s.GuildRoles(i.GuildID)
+	perms, err := S.GuildRoles(guildID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,24 +62,24 @@ func UserHasRole(memberRoles []string, role discordgo.Role) bool {
 	return user_has_role
 }
 
-func ToggleRole(s *discordgo.Session, i *discordgo.InteractionCreate, role *discordgo.Role) error {
+func ToggleRole(i *discordgo.InteractionCreate, role *discordgo.Role) error {
 	var response string
 	user_has_role := UserHasRole(i.Member.Roles, *role)
 	if !user_has_role {
-		err := s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
+		err := S.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
 		if err != nil {
 			return err
 		}
 		response = "Role added: <@&" + role.ID + ">"
 	} else {
-		err := s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, role.ID)
+		err := S.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, role.ID)
 		if err != nil {
 			return err
 		}
 		response = "Role removed: <@&" + role.ID + ">"
 	}
 
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	S.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: response,
@@ -87,68 +89,97 @@ func ToggleRole(s *discordgo.Session, i *discordgo.InteractionCreate, role *disc
 	return nil
 }
 
-func AssignRoleByRoleName(s *discordgo.Session, i *discordgo.InteractionCreate, roleName string) (*discordgo.Role, error) {
-	role, err := FindRoleByName(s, i, roleName)
+func AssignRoleByRoleName(i *discordgo.InteractionCreate, roleName string) (*discordgo.Role, error) {
+	role, err := FindRoleByName(i, roleName)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
-	if err != nil {
-		return nil, err
-	}
-	return role, nil
-}
-
-func AssignRoleByID(s *discordgo.Session, i *discordgo.InteractionCreate, roleID string) (*discordgo.Role, error) {
-	role, err := FindRoleByRoleID(s, i, roleID)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
+	err = S.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
 	if err != nil {
 		return nil, err
 	}
 	return role, nil
 }
 
-func AssignDelegatorRole(s *discordgo.Session, i *discordgo.InteractionCreate, totalStake int) ([]*discordgo.Role, error) {
-	config := preebot.LoadConfig(i.GuildID)
+func AssignRoleByID(guildID, userID, roleID string) (*discordgo.Role, error) {
+	role, err := FindRoleByRoleID(guildID, roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = S.GuildMemberRoleAdd(guildID, userID, role.ID)
+	if err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
+func AssignDelegatorRole(guildID, userID string, totalStake int) ([]string, error) {
+	config := preebot.LoadConfig(guildID)
+
+	// Get existing roles
+	member, err := S.GuildMember(guildID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Clear existing roles
+	var currentRoles []string
+	for _, currentRoleID := range member.Roles {
+		_, ok := config.DelegatorRoles[currentRoleID]
+		if ok {
+			currentRoles = append(currentRoles, currentRoleID)
+			// err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
+			// if err != nil {
+			// 	slog.Error("could not remove role", "role", currentRoleID, "error", err)
+			// 	continue
+			// }
+		}
+	}
+
+	// Add newly accounted for roles
 	roleIDs := preebot.GetDelegatorRolesByStake(totalStake, config.DelegatorRoles)
-	var assignedRoles []*discordgo.Role
+
+	if reflect.DeepEqual(currentRoles, roleIDs) {
+		return currentRoles, nil
+	}
+
+	var assignedRoles []string
 	if roleIDs != nil {
 		for _, roleID := range roleIDs {
-			role, err := AssignRoleByID(s, i, roleID)
+			role, err := AssignRoleByID(guildID, userID, roleID)
 			if err != nil {
 				return nil, err
 			}
 
-			assignedRoles = append(assignedRoles, role)
+			assignedRoles = append(assignedRoles, role.ID)
 		}
 	}
 
 	return assignedRoles, nil
 }
 
-func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func CheckDelegation(i *discordgo.InteractionCreate) {
 	user := preebot.LoadUser(i.Member.User.ID)
 	config := preebot.LoadConfig(i.GuildID)
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
 
 	if len(user.Wallets) == 0 {
 		content := "You need to link your wallet first. Please use /link-wallet."
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		})
 		return
 	}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
 	totalAda := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
-	roles, err := AssignDelegatorRole(s, i, int(totalAda))
+	roleIDs, err := AssignDelegatorRole(i.GuildID, i.Member.User.ID, int(totalAda))
 	if err != nil {
-		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+		S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Something went wrong! Maybe open a #support-ticket ",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		})
@@ -173,10 +204,10 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var b bytes.Buffer
 	sentence := "After looking at your {{ .walletCount }} {{ .walletWord }}\n{{ .walletList }}"
 
-	if roles != nil {
+	if roleIDs != nil {
 		sentence = sentence + "You have been assigned the following!\n"
-		for _, role := range roles {
-			sentence = sentence + "<@&" + role.ID + ">\n"
+		for _, roleID := range roleIDs {
+			sentence = sentence + "<@&" + roleID + ">\n"
 		}
 	} else {
 		sentence = sentence + "You don't qualify for any roles."
@@ -190,18 +221,19 @@ func CheckDelegation(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	})
 
 	content := b.String()
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+
+	S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,
 	})
 }
 
-func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func CheckAssets(i *discordgo.InteractionCreate) {
 	user := preebot.LoadUser(i.Member.User.ID)
 	config := preebot.LoadConfig(i.GuildID)
 
 	if len(user.Wallets) == 0 {
 		content := "You need to link your wallet first. Please use /link-wallet."
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		})
 		return
@@ -209,7 +241,7 @@ func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
 
 	if len(config.PolicyIDs) == 0 {
 		content := "The administrator needs to set the policy ID first."
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		})
 		return
@@ -227,7 +259,31 @@ func CheckAssets(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	assetCount := blockfrost.CountUserAssetsByPolicy(config.PolicyIDs, allAddresses)
 
 	content := fmt.Sprintf("You have %d nfts associated with the policy IDs of this server", assetCount)
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+	S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,
 	})
+}
+
+// Automatic Role Checker
+func AutomaticRoleChecker() {
+	// Get guild id
+	configs := preebot.LoadConfigs()
+	for _, config := range configs {
+		// Get verified guild members
+		users := preebot.LoadUsers()
+
+		// Get guild member linked wallets
+		for _, user := range users {
+			ctx := context.Background()
+			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+			defer cancel()
+
+			// Check delegation
+			totalAda := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
+			_, err := AssignDelegatorRole(config.GuildID, user.ID, int(totalAda))
+			if err != nil {
+				slog.Error("could not assign roles", "user", user.ID, "error", err)
+			}
+		}
+	}
 }

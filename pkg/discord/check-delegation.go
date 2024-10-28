@@ -20,5 +20,5 @@ var CHECK_DELEGATION_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 		},
 	})
 
-	CheckDelegation(s, i)
+	CheckDelegation(i)
 }

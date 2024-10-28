@@ -3,9 +3,12 @@ package preebot
 import (
 	"encoding/json"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
+
+type Configs []Config
 
 type Config struct {
 	DelegatorRoles DelegatorRoles `json:"delegatorroles,omitempty"`
@@ -100,4 +103,35 @@ func SaveConfig(config Config) {
 	if err != nil {
 		log.Fatalf("Cannot write to config file: %v", err)
 	}
+}
+
+func LoadConfigs() Configs {
+	files, err := os.ReadDir(CONFIG_FILE_PATH)
+	if err != nil {
+		slog.Error("LOAD CONFIGS", "could not load configs", err)
+		return nil
+	}
+
+	var configs Configs
+	for _, file := range files {
+		configPath := filepath.Join(CONFIG_FILE_PATH, file.Name())
+		if !file.IsDir() {
+			contents, err := os.ReadFile(configPath)
+			if err != nil {
+				slog.Error("LOAD CONFIGS", "could not load config file", err)
+				return nil
+			}
+
+			var config Config
+			err = json.Unmarshal(contents, &config)
+			if err != nil {
+				slog.Error("LOAD CONFIGS", "could not unmarshal config", err)
+				return nil
+			}
+
+			configs = append(configs, config)
+		}
+	}
+
+	return configs
 }
