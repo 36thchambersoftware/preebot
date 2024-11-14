@@ -11,6 +11,7 @@ import (
 type Configs []Config
 
 type Config struct {
+	PolicyRoles    PolicyRoles    `json:"policyroles,omitempty"`
 	DelegatorRoles DelegatorRoles `json:"delegatorroles,omitempty"`
 	PoolIDs        PoolID         `json:"poolids,omitempty"`
 	PolicyIDs      PolicyID       `json:"policyids,omitempty"`
@@ -23,14 +24,15 @@ type (
 	PolicyID map[string]bool
 )
 
-type DelegatorRoles map[string]DelegatorRoleBounds
+type PolicyRoles map[string]RoleBounds
+type DelegatorRoles map[string]RoleBounds
 
-type DelegatorRoleBounds struct {
+type RoleBounds struct {
 	Min Bound
 	Max Bound
 }
 
-func (drb DelegatorRoleBounds) IsValid() bool {
+func (drb RoleBounds) IsValid() bool {
 	return drb.Max > drb.Min
 }
 
@@ -77,6 +79,10 @@ func LoadConfig(gID string) Config {
 
 	if config.PoolIDs == nil {
 		config.PoolIDs = make(PoolID)
+	}
+
+	if config.PolicyRoles == nil {
+		config.PolicyRoles = make(PolicyRoles)
 	}
 
 	if config.PolicyIDs == nil {
