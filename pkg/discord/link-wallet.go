@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"preebot/pkg/blockfrost"
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -59,7 +59,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		},
 	})
 
-	user := preebot.LoadUser(i.Member.User.ID)
+	user := preeb.LoadUser(i.Member.User.ID)
 	for _, wallet := range user.Wallets {
 		for _, addr := range wallet {
 			if address == addr.String() {
@@ -123,7 +123,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 
 	if walletLinked {
 		account := blockfrost.GetAccountByAddress(ctx, address)
-		user.Wallets[preebot.StakeAddress(account.StakeAddress)] = append(user.Wallets[preebot.StakeAddress(account.StakeAddress)], preebot.Address(address))
+		user.Wallets[preeb.StakeAddress(account.StakeAddress)] = append(user.Wallets[preeb.StakeAddress(account.StakeAddress)], preeb.Address(address))
 
 		if user.ID == "" {
 			user.ID = i.Member.User.ID
@@ -133,7 +133,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 			user.DisplayName = i.Member.User.GlobalName
 		}
 
-		preebot.SaveUser(user)
+		preeb.SaveUser(user)
 	} else {
 		content := "I couldn't verify your address. Maybe the transaction isn't on the blockchain yet. Try the /link-wallet command again when your transaction is complete. If it still doesn't work, open a ticket and we'll figure it out."
 		s.FollowupMessageEdit(i.Interaction, msg.ID, &discordgo.WebhookEdit{
@@ -141,13 +141,9 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		})
 	}
 
-	config := preebot.LoadConfig(i.GuildID)
+	config := preeb.LoadConfig(i.GuildID)
 
-	if config.PoolIDs != nil {
-		CheckDelegation(i)
+	if config.PoolIDs != nil || config.PolicyIDs != nil {
+		CheckUserWallets(i)
 	}
-
-	// if config.PolicyIDs != nil {
-	// 	CheckAssets(s, i)
-	// }
 }

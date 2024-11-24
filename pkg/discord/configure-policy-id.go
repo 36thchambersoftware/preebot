@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"preebot/pkg/blockfrost"
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -67,9 +67,9 @@ var CONFIGURE_POLICY_ID_HANDLER = func(s *discordgo.Session, i *discordgo.Intera
 
 	content := b.String()
 
-	config := preebot.LoadConfig(i.GuildID)
+	config := preeb.LoadConfig(i.GuildID)
 	config.PolicyIDs[policyID] = true
-	preebot.SaveConfig(config)
+	preeb.SaveConfig(config)
 
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	bfg "github.com/blockfrost/blockfrost-go"
 	"golang.org/x/exp/maps"
@@ -82,7 +82,7 @@ func GetStakeInfo(ctx context.Context, stakeAddress string) bfg.Account {
 	return stakeDetails
 }
 
-func GetTotalStake(ctx context.Context, poolIDs preebot.PoolID, wallets preebot.Wallets) Ada {
+func GetTotalStake(ctx context.Context, poolIDs preeb.PoolID, wallets preeb.Wallets) Ada {
 	var totalStake int
 
 	accounts := maps.Keys(wallets)
@@ -120,7 +120,7 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 	return assets, nil
 }
 
-func GetAllUserAddresses(ctx context.Context, wallets preebot.Wallets) ([]bfg.Address, error) {
+func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]bfg.Address, error) {
 	var allAddresses []bfg.Address
 	for _, wallet := range wallets {
 		for _, addr := range wallet {
@@ -136,7 +136,7 @@ func GetAllUserAddresses(ctx context.Context, wallets preebot.Wallets) ([]bfg.Ad
 	return allAddresses, nil
 }
 
-func CountUserAssetsByPolicy(policyIDs preebot.PolicyID, allAddresses []bfg.Address) int {
+func CountUserAssetsByPolicy(policyIDs preeb.PolicyID, allAddresses []bfg.Address) int {
 	totalNfts := 0
 
 	for _, address := range allAddresses {

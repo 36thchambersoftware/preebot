@@ -2,8 +2,7 @@ package discord
 
 import (
 	"fmt"
-
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -25,7 +24,7 @@ var CONFIGURE_ENGAGE_ROLE_COMMAND = discordgo.ApplicationCommand{
 }
 
 var CONFIGURE_ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	config := preebot.LoadConfig(i.GuildID)
+	config := preeb.LoadConfig(i.GuildID)
 	options := GetOptions(i)
 	role := options["role"].RoleValue(s, i.GuildID)
 
@@ -40,5 +39,5 @@ var CONFIGURE_ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 		},
 	})
 
-	preebot.SaveConfig(config)
+	preeb.SaveConfig(config)
 }

@@ -19,27 +19,27 @@ var (
 	commands = []*discordgo.ApplicationCommand{
 		&discord.ENGAGE_ROLE_COMMAND,
 		&discord.LINK_WALLET_COMMAND,
-		&discord.CHECK_DELEGATION_COMMAND,
-		&discord.CHECK_ASSETS_COMMAND,
+		&discord.CHECK_MY_WALLETS_COMMAND,
 		&discord.CONFIGURE_POOL_ID_COMMAND,
 		&discord.CONFIGURE_POLICY_ID_COMMAND,
 		&discord.CONFIGURE_DELEGATOR_ROLE_COMMAND,
 		&discord.CONFIGURE_POLICY_ROLE_COMMAND,
 		&discord.CONFIGURE_ENGAGE_ROLE_COMMAND,
 		&discord.LIST_DELEGATOR_ROLES_COMMAND,
+		&discord.LIST_POLICY_ROLES_COMMAND,
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 		discord.ENGAGE_ROLE_COMMAND.Name:              discord.ENGAGE_ROLE_HANDLER,
 		discord.LINK_WALLET_COMMAND.Name:              discord.LINK_WALLET_HANDLER,
-		discord.CHECK_DELEGATION_COMMAND.Name:         discord.CHECK_DELEGATION_HANDLER,
-		discord.CHECK_ASSETS_COMMAND.Name:             discord.CHECK_ASSETS_HANDLER,
+		discord.CHECK_MY_WALLETS_COMMAND.Name:       discord.CHECK_MY_WALLETS_HANDLER,
 		discord.CONFIGURE_POOL_ID_COMMAND.Name:        discord.CONFIGURE_POOL_ID_HANDLER,
 		discord.CONFIGURE_POLICY_ID_COMMAND.Name:      discord.CONFIGURE_POLICY_ID_HANDLER,
 		discord.CONFIGURE_DELEGATOR_ROLE_COMMAND.Name: discord.CONFIGURE_DELEGATOR_ROLE_HANDLER,
 		discord.CONFIGURE_POLICY_ROLE_COMMAND.Name:    discord.CONFIGURE_POLICY_ROLE_HANDLER,
 		discord.CONFIGURE_ENGAGE_ROLE_COMMAND.Name:    discord.CONFIGURE_ENGAGE_ROLE_HANDLER,
 		discord.LIST_DELEGATOR_ROLES_COMMAND.Name:     discord.LIST_DELEGATOR_ROLES_HANDLER,
+		discord.LIST_POLICY_ROLES_COMMAND.Name:        discord.LIST_POLICY_ROLES_HANDLER,
 	}
 	lockout         = make(map[string]struct{})
 	lockoutResponse = &discordgo.InteractionResponse{

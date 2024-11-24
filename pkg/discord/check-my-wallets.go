@@ -4,13 +4,13 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var CHECK_DELEGATION_COMMAND = discordgo.ApplicationCommand{
+var CHECK_MY_WALLETS_COMMAND = discordgo.ApplicationCommand{
 	Version:     "0.01",
-	Name:        "check-delegation",
+	Name:        "check-my-wallets",
 	Description: "Check which pool has your delegation.",
 }
 
-var CHECK_DELEGATION_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+var CHECK_MY_WALLETS_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -20,5 +20,5 @@ var CHECK_DELEGATION_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 		},
 	})
 
-	CheckDelegation(i)
+	 CheckUserWallets(i)
 }

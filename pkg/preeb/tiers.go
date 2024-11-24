@@ -1,4 +1,4 @@
-package preebot
+package preeb
 
 func GetDelegatorRolesByStake(controlledAmount int, roles DelegatorRoles) []string {
 	var rolesToAssign []string

@@ -40,7 +40,7 @@ func init() {
 		for {
 			slog.Info("Checking roles...")
 			AutomaticRoleChecker()
-			time.Sleep(24 * time.Hour)
+			time.Sleep(1 * time.Hour)
 		}
 	}()
 }

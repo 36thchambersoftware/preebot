@@ -3,7 +3,7 @@ package discord
 import (
 	"log"
 
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -19,7 +19,7 @@ var (
 
 var ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var engageRole *discordgo.Role
-	config := preebot.LoadConfig(i.GuildID)
+	config := preeb.LoadConfig(i.GuildID)
 
 	engageRole, err := FindRoleByRoleID(i.GuildID, config.EngageRole)
 	if err != nil {

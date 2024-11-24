@@ -3,10 +3,12 @@ package discord
 import (
 	"context"
 	"reflect"
+	"slices"
+	"sort"
 	"time"
 
 	"preebot/pkg/blockfrost"
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
 	"golang.org/x/exp/slog"
@@ -111,39 +113,83 @@ func AssignRoleByID(guildID, userID, roleID string) (*discordgo.Role, error) {
 	return role, nil
 }
 
-func AssignDelegatorRole(guildID, userID string, totalStake int) ([]string, error) {
-	config := preebot.LoadConfig(guildID)
-
+func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
+	config := preeb.LoadConfig(guildID)
+	user := preeb.LoadUser(userID)
 	// Get existing roles
 	member, err := S.GuildMember(guildID, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Clear existing roles
-	var currentRoles []string
-	for _, currentRoleID := range member.Roles {
-		_, ok := config.DelegatorRoles[currentRoleID]
-		if ok {
-			currentRoles = append(currentRoles, currentRoleID)
-			// err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
-			// if err != nil {
-			// 	slog.Error("could not remove role", "role", currentRoleID, "error", err)
-			// 	continue
-			// }
+	// Get qualified delegator roles
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	totalStake := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
+	delegatorRoleIDs := preeb.GetDelegatorRolesByStake(int(totalStake), config.DelegatorRoles)
+	sort.Strings(delegatorRoleIDs)
+
+	// Get qualified policy holder roles
+	allAddresses, err := blockfrost.GetAllUserAddresses(ctx, user.Wallets)
+	assetCount := blockfrost.CountUserAssetsByPolicy(config.PolicyIDs, allAddresses)
+	policyRoleIDs := preeb.GetPolicyRoles(assetCount, config.PolicyRoles)
+	sort.Strings(policyRoleIDs)
+
+	allQualifiedRoles := append(delegatorRoleIDs, policyRoleIDs...)
+
+	uniqueRoles := make(map[string]bool)
+	var rolesToAdd []string
+	for _, roleID := range allQualifiedRoles {
+		if !uniqueRoles[roleID] {
+			rolesToAdd = append(rolesToAdd, roleID)
+			uniqueRoles[roleID] = true
 		}
 	}
 
-	// Add newly accounted for roles
-	roleIDs := preebot.GetDelegatorRolesByStake(totalStake, config.DelegatorRoles)
 
-	if reflect.DeepEqual(currentRoles, roleIDs) {
+
+	// Get current roles
+	var currentRoles []string
+	for _, currentRoleID := range member.Roles {
+		// if it's a delegator role ...
+		if _, ok := config.DelegatorRoles[currentRoleID]; ok {
+			currentRoles = append(currentRoles, currentRoleID)
+			// Check if the user should have this role ...
+			if (!slices.Contains(rolesToAdd, currentRoleID)) {
+				// and remove it if not
+				err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
+				if err != nil {
+					slog.Error("could not remove role", "role", currentRoleID, "error", err)
+					continue
+				}
+			}
+		}
+
+		// if it's a policy role ...
+		if _, ok := config.PolicyRoles[currentRoleID]; ok {
+			currentRoles = append(currentRoles, currentRoleID)
+			// Check if the user should have this role ...
+			if (!slices.Contains(rolesToAdd, currentRoleID)) {
+				// and remove it if not
+				err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
+				if err != nil {
+					slog.Error("could not remove role", "role", currentRoleID, "error", err)
+					continue
+				}
+			}
+		}
+	}
+
+	sort.Strings(currentRoles)
+
+	if reflect.DeepEqual(currentRoles, allQualifiedRoles) {
 		return currentRoles, nil
 	}
 
 	var assignedRoles []string
-	if roleIDs != nil {
-		for _, roleID := range roleIDs {
+	if allQualifiedRoles != nil {
+		for _, roleID := range allQualifiedRoles {
 			role, err := AssignRoleByID(guildID, userID, roleID)
 			if err != nil {
 				return nil, err
@@ -159,10 +205,10 @@ func AssignDelegatorRole(guildID, userID string, totalStake int) ([]string, erro
 // Automatic Role Checker
 func AutomaticRoleChecker() {
 	// Get guild id
-	configs := preebot.LoadConfigs()
+	configs := preeb.LoadConfigs()
 	for _, config := range configs {
 		// Get verified guild members
-		users := preebot.LoadUsers()
+		users := preeb.LoadUsers()
 
 		// Get guild member linked wallets
 		for _, user := range users {
@@ -170,57 +216,11 @@ func AutomaticRoleChecker() {
 			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 			defer cancel()
 
-			// Check delegation
-			totalAda := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
-			_, err := AssignDelegatorRole(config.GuildID, user.ID, int(totalAda))
+			// Check roles
+			_, err := AssignQualifiedRoles(config.GuildID, user.ID)
 			if err != nil {
 				slog.Error("could not assign roles", "user", user.ID, "error", err)
 			}
 		}
 	}
-}
-
-func AssignPolicyRole(guildID, userID string, totalAssets int) ([]string, error) {
-	config := preebot.LoadConfig(guildID)
-
-	// Get existing roles
-	member, err := S.GuildMember(guildID, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Clear existing roles
-	var currentRoles []string
-	for _, currentRoleID := range member.Roles {
-		_, ok := config.DelegatorRoles[currentRoleID]
-		if ok {
-			currentRoles = append(currentRoles, currentRoleID)
-			// err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
-			// if err != nil {
-			// 	slog.Error("could not remove role", "role", currentRoleID, "error", err)
-			// 	continue
-			// }
-		}
-	}
-
-	// Add newly accounted for roles
-	roleIDs := preebot.GetPolicyRoles(totalAssets, config.PolicyRoles)
-
-	if reflect.DeepEqual(currentRoles, roleIDs) {
-		return currentRoles, nil
-	}
-
-	var assignedRoles []string
-	if roleIDs != nil {
-		for _, roleID := range roleIDs {
-			role, err := AssignRoleByID(guildID, userID, roleID)
-			if err != nil {
-				return nil, err
-			}
-
-			assignedRoles = append(assignedRoles, role.ID)
-		}
-	}
-
-	return assignedRoles, nil
 }

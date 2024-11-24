@@ -3,7 +3,7 @@ package discord
 import (
 	"fmt"
 
-	"preebot/pkg/preebot"
+	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -57,13 +57,13 @@ var CONFIGURE_POLICY_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 		},
 	})
 
-	config := preebot.LoadConfig(i.GuildID)
+	config := preeb.LoadConfig(i.GuildID)
 
-	bounds := preebot.RoleBounds{Min: preebot.Bound(min), Max: preebot.Bound(max)}
+	bounds := preeb.RoleBounds{Min: preeb.Bound(min), Max: preeb.Bound(max)}
 
 	if bounds.IsValid() {
 		config.PolicyRoles[role.ID] = bounds
-		preebot.SaveConfig(config)
+		preeb.SaveConfig(config)
 		return
 	}
 }

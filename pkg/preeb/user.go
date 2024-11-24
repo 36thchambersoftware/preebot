@@ -1,4 +1,4 @@
-package preebot
+package preeb
 
 import (
 	"encoding/json"
