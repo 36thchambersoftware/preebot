@@ -2,6 +2,9 @@ package discord
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"reflect"
 	"slices"
 	"sort"
@@ -188,16 +191,16 @@ func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
 	}
 
 	var assignedRoles []string
-	if allQualifiedRoles != nil {
-		for _, roleID := range allQualifiedRoles {
-			role, err := AssignRoleByID(guildID, userID, roleID)
-			if err != nil {
-				return nil, err
-			}
 
-			assignedRoles = append(assignedRoles, role.ID)
+	for _, roleID := range allQualifiedRoles {
+		role, err := AssignRoleByID(guildID, userID, roleID)
+		if err != nil {
+			return nil, err
 		}
+
+		assignedRoles = append(assignedRoles, role.ID)
 	}
+
 
 	return assignedRoles, nil
 }
@@ -209,6 +212,8 @@ func AutomaticRoleChecker() {
 	for _, config := range configs {
 		// Get verified guild members
 		users := preeb.LoadUsers()
+
+		loadCustodianData(config.Custodians)
 
 		// Get guild member linked wallets
 		for _, user := range users {
@@ -222,5 +227,35 @@ func AutomaticRoleChecker() {
 				slog.Error("could not assign roles", "user", user.ID, "error", err)
 			}
 		}
+	}
+}
+
+func loadCustodianData(c []preeb.Custodian) {
+	for _, custodian := range c {
+		response, err := http.Get(custodian.Url.String())
+		responseData, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			slog.Error("invalid response body", "error", err)
+		}
+
+		var data []map[string]interface{}
+		err = json.Unmarshal([]byte(responseData), &data)
+		if err != nil {
+			slog.Error("could not unmarshal response body", "error", err)
+		}
+
+		custodian_addresses := make(map[string]string)
+		for _, pair := range data {
+			if _, ok := pair[custodian.UserAddress]; !ok {
+				break
+			}
+	
+			if _, ok := pair[custodian.CustodianAddress]; !ok {
+				break
+			}
+
+			custodian_addresses[custodian.UserAddress] = custodian.CustodianAddress
+		}
+		CUSTODIAN_ADDRESSES = custodian_addresses
 	}
 }

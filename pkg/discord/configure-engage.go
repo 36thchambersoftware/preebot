@@ -39,5 +39,5 @@ var CONFIGURE_ENGAGE_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 		},
 	})
 
-	preeb.SaveConfig(config)
+	config.Save()
 }

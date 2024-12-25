@@ -67,7 +67,7 @@ var CONFIGURE_POOL_ID_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 
 	config := preeb.LoadConfig(i.GuildID)
 	config.PoolIDs[poolID] = true
-	preeb.SaveConfig(config)
+	config.Save()
 
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,

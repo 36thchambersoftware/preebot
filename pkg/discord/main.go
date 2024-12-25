@@ -21,11 +21,15 @@ var (
 var (
 	S                   *discordgo.Session
 	DISCORD_WEBHOOK_URL string
+	CUSTODIAN_ADDRESSES map[string]string
 )
 
-func init() { flag.Parse() }
-
 func init() {
+	initDiscord()
+	initWebhook()
+}
+
+func initDiscord() {
 	token, ok := os.LookupEnv("PREEBOT_TOKEN")
 	if !ok {
 		log.Fatalf("Missing token")
@@ -36,16 +40,18 @@ func init() {
 		log.Fatalf("Invalid bot parameters: %v", err)
 	}
 
-	go func() {
-		for {
-			slog.Info("Checking roles...")
-			AutomaticRoleChecker()
-			time.Sleep(1 * time.Hour)
-		}
-	}()
+	go automaticRoleChecker()
 }
 
-func init() {
+func automaticRoleChecker() {
+	for {
+		slog.Info("Checking roles...")
+		AutomaticRoleChecker()
+		time.Sleep(1 * time.Hour)
+	}
+}
+
+func initWebhook() {
 	// DISCORD_WEBHOOK_URL
 	webhook, ok := os.LookupEnv("DISCORD_WEBHOOK_URL")
 	if !ok {

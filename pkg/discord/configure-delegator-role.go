@@ -62,7 +62,7 @@ var CONFIGURE_DELEGATOR_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.I
 
 	if bounds.IsValid() {
 		config.DelegatorRoles[role.ID] = bounds
-		preeb.SaveConfig(config)
+		config.Save()
 		return
 	}
 }

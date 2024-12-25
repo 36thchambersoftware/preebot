@@ -63,7 +63,7 @@ var CONFIGURE_POLICY_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 
 	if bounds.IsValid() {
 		config.PolicyRoles[role.ID] = bounds
-		preeb.SaveConfig(config)
+		config.Save()
 		return
 	}
 }
