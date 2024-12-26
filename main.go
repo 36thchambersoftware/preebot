@@ -1,20 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
 
+	mongo "preebot/pkg/db"
 	"preebot/pkg/discord"
-	"preebot/pkg/mongo"
 
 	mongodb "go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-var mongoclient *mongodb.Client
+var (
+	mdb *mongodb.Client
+	dbctx context.Context
+	dbcancel context.CancelFunc
+)
 
 var (
 	integerOptionMinValue          = 1.0
@@ -58,16 +63,20 @@ var (
 	}
 )
 
-func main() {
+func init() {
 	// Setup DB
-    client, ctx, cancel, err := mongo.Connect()
+    mdb, ctx, cancel, err := mongo.Connect()
     if err != nil {
         panic(err)
     }
-    
-    defer mongo.Close(client, ctx, cancel)
-	mongo.DB = client
 
+	dbctx = ctx
+	dbcancel = cancel
+	mongo.DB = mdb
+}
+
+func main() {
+	defer mongo.Close(mdb, dbctx, dbcancel)
 
 	// Setup discord
 	discord.S.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -98,7 +107,7 @@ func main() {
 	discord.S.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
 	})
-	err = discord.S.Open()
+	err := discord.S.Open()
 	if err != nil {
 		log.Fatalf("Cannot open the session: %v", err)
 	}
