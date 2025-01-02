@@ -78,7 +78,15 @@ func LoadConfig(guild_id string) Config {
 	var config Config
 	err := collection.FindOne(ctx, filter).Decode(&config)
 	if err != nil {
-		log.Fatalf("cannot find config: %v", err)
+		log.Printf("cannot find config: %v", err)
+	}
+
+	if config.GuildID == "" {
+		config.PoolIDs = make(PoolID)
+		config.PolicyIDs = make(PolicyID)
+		config.DelegatorRoles = make(DelegatorRoles)
+		config.PolicyRoles = make(PolicyRoles)
+		config.GuildID = guild_id
 	}
 
 	return config

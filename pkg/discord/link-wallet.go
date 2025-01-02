@@ -133,7 +133,8 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 			user.DisplayName = i.Member.User.GlobalName
 		}
 
-		user.Save()
+		preeb.SaveUser(user)
+		// user.Save()
 	} else {
 		content := "I couldn't verify your address. Maybe the transaction isn't on the blockchain yet. Try the /link-wallet command again when your transaction is complete. If it still doesn't work, open a ticket and we'll figure it out."
 		s.FollowupMessageEdit(i.Interaction, msg.ID, &discordgo.WebhookEdit{
