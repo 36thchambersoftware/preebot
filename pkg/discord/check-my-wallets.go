@@ -1,6 +1,8 @@
 package discord
 
 import (
+	"preebot/pkg/preeb"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -20,5 +22,28 @@ var CHECK_MY_WALLETS_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 		},
 	})
 
-	 CheckUserWallets(i)
+	user := preeb.LoadUser(i.Member.User.ID)
+
+	if len(user.Wallets) == 0 {
+		content := "You need to link your wallet first. Please use /link-wallet."
+		S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: content,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+		return
+	}
+
+	newRoleIDs, err := AssignQualifiedRoles(i.GuildID, i.Member.User.ID)
+	if err != nil {
+		S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: "Something went wrong! Maybe open a #support-ticket ",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+		return
+	}
+
+	content := FormatNewRolesMessage(user, newRoleIDs)
+	S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &content,
+	})
 }

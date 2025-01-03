@@ -145,6 +145,19 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	config := preeb.LoadConfig(i.GuildID)
 
 	if config.PoolIDs != nil || config.PolicyIDs != nil {
-		CheckUserWallets(i)
+		newRoleIDs, err := AssignQualifiedRoles(i.GuildID, i.Member.User.ID)
+		if err != nil {
+			S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+				Content: "Something went wrong! Maybe open a #support-ticket ",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			})
+	
+			return
+		}
+	
+		content := FormatNewRolesMessage(user, newRoleIDs)
+		S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &content,
+		})
 	}
 }

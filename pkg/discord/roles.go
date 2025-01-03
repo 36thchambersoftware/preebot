@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io/ioutil"
@@ -8,6 +9,8 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
+	"text/template"
 	"time"
 
 	"preebot/pkg/blockfrost"
@@ -228,6 +231,44 @@ func AutomaticRoleChecker() {
 			}
 		}
 	}
+}
+
+func FormatNewRolesMessage(user preeb.User, roleIDs []string) (string) {
+	walletWord := "wallet"
+	if len(user.Wallets) > 1 {
+		walletWord = "wallets"
+	}
+
+	walletList := ""
+	n := 0
+	for _, stakeAddress := range user.Wallets {
+		for _, addr := range stakeAddress {
+			n++
+			walletList = walletList + strconv.Itoa(n) + ". -# " + string(addr) + "\n"
+		}
+	}
+
+	var b bytes.Buffer
+	sentence := "After looking at your {{ .walletCount }} {{ .walletWord }}\n{{ .walletList }}"
+
+	if roleIDs != nil {
+		sentence = sentence + "You have been assigned the following!\n"
+		for _, roleID := range roleIDs {
+			sentence = sentence + "<@&" + roleID + ">\n"
+		}
+	} else {
+		sentence = sentence + "You don't qualify for any roles."
+	}
+
+	partial := template.Must(template.New("check-delegation-template").Parse(sentence))
+	partial.Execute(&b, map[string]interface{}{
+		"walletCount": len(user.Wallets),
+		"walletWord":  walletWord,
+		"walletList":  walletList,
+	})
+
+	content := b.String()
+	return content
 }
 
 func loadCustodianData(c []preeb.Custodian) {

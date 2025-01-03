@@ -23,5 +23,5 @@ var LIST_DELEGATOR_ASSETS_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 		},
 	})
 
-	CheckUserWallets(i)
+
 }
