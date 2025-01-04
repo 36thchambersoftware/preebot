@@ -59,7 +59,9 @@ var CONFIGURE_POLICY_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 
 	config := preeb.LoadConfig(i.GuildID)
 
-	bounds := preeb.RoleBounds{Min: preeb.Bound(min), Max: preeb.Bound(max)}
+	order := int64(len(config.PolicyRoles) + 1)
+
+	bounds := preeb.RoleBounds{Min: preeb.Bound(min), Max: preeb.Bound(max), Order: order}
 
 	if bounds.IsValid() {
 		config.PolicyRoles[role.ID] = bounds

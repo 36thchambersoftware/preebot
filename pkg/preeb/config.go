@@ -33,6 +33,7 @@ type DelegatorRoles map[string]RoleBounds
 type RoleBounds struct {
 	Min Bound `bson:"min,omitempty"`
 	Max Bound `bson:"max,omitempty"`
+	Order int64 `bson:"order,omitempty"`
 }
 
 func (drb RoleBounds) IsValid() bool {
