@@ -83,11 +83,23 @@ func LoadConfig(guild_id string) Config {
 	}
 
 	if config.GuildID == "" {
-		config.PoolIDs = make(PoolID)
-		config.PolicyIDs = make(PolicyID)
-		config.DelegatorRoles = make(DelegatorRoles)
-		config.PolicyRoles = make(PolicyRoles)
 		config.GuildID = guild_id
+	}
+
+	if config.PoolIDs == nil {
+		config.PoolIDs = make(PoolID)
+	}
+
+	if config.PolicyIDs == nil {
+		config.PolicyIDs = make(PolicyID)
+	}
+
+	if config.DelegatorRoles == nil {
+		config.DelegatorRoles = make(DelegatorRoles)
+	}
+
+	if config.PolicyRoles == nil {
+		config.PolicyRoles = make(PolicyRoles)
 	}
 
 	return config

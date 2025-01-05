@@ -138,7 +138,10 @@ func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
 
 	// Get qualified policy holder roles
 	allAddresses, err := blockfrost.GetAllUserAddresses(ctx, user.Wallets)
-	assetCount := blockfrost.CountUserAssetsByPolicy(config.PolicyIDs, allAddresses)
+	if err != nil {
+		return nil, err
+	}
+	assetCount := blockfrost.CountUserAssetsByPolicy(ctx, config.PolicyIDs, allAddresses)
 	policyRoleIDs := preeb.GetPolicyRoles(assetCount, config.PolicyRoles)
 	sort.Strings(policyRoleIDs)
 

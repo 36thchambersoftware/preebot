@@ -3,8 +3,13 @@ package blockfrost
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"log/slog"
+	"math"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +23,7 @@ import (
 var (
 	client         bfg.APIClient
 	APIQueryParams bfg.APIQueryParams
+	blockfrostProjectID string
 )
 
 const (
@@ -32,13 +38,31 @@ type (
 	Ada      int
 )
 
-func init() {
+type AddressExtended struct {
+	Address      string   `json:"address,omitempty"`
+	Amount       []Amount `json:"amount,omitempty"`
+	StakeAddress string   `json:"stake_address,omitempty"`
+	Type         string   `json:"type,omitempty"`
+	Script       bool     `json:"script,omitempty"`
+}
+type Amount struct {
+	Unit                  string `json:"unit,omitempty"`
+	Quantity              string `json:"quantity,omitempty"`
+	Decimals              int    `json:"decimals,omitempty"`
+	HasNftOnchainMetadata bool   `json:"has_nft_onchain_metadata,omitempty"`
+}
+
+func loadBlockfrostProjectID() string {
 	blockfrostProjectID, ok := os.LookupEnv("BLOCKFROST_PROJECT_ID")
 	if !ok {
 		slog.Error("Could not get blockfrost project id")
 	}
 
-	client = bfg.NewAPIClient(bfg.APIClientOptions{ProjectID: blockfrostProjectID})
+	return blockfrostProjectID
+}
+
+func init() {
+	client = bfg.NewAPIClient(bfg.APIClientOptions{ProjectID: loadBlockfrostProjectID()})
 }
 
 func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTXOs, error) {
@@ -120,30 +144,64 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 	return assets, nil
 }
 
-func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]bfg.Address, error) {
-	var allAddresses []bfg.Address
+func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]AddressExtended, error) {
+	var allAddresses []AddressExtended
 	for _, wallet := range wallets {
 		for _, addr := range wallet {
-			address, err := client.Address(ctx, string(addr))
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://cardano-mainnet.blockfrost.io/api/v0/addresses/%s/extended", addr), nil)
 			if err != nil {
 				return nil, err
 			}
 
-			allAddresses = append(allAddresses, address)
+			blockfrostProjectID := loadBlockfrostProjectID()
+			req.Header.Set("Project_id", blockfrostProjectID)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, err
+			}
+			defer resp.Body.Close()
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+
+			var extended AddressExtended
+			json.Unmarshal(body, &extended)
+			// address, err := client.Address(ctx, string(addr))
+			// if err != nil {
+			// 	return nil, err
+			// }
+
+			allAddresses = append(allAddresses, extended)
 		}
 	}
 
 	return allAddresses, nil
 }
 
-func CountUserAssetsByPolicy(policyIDs preeb.PolicyID, allAddresses []bfg.Address) int {
+func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyID, allAddresses []AddressExtended) int {
 	totalNfts := 0
+
+	powInt := func (decimals int) float64 {
+		return math.Pow(10, float64(decimals))
+	}
 
 	for _, address := range allAddresses {
 		for _, utxo := range address.Amount {
 			for policyID := range policyIDs {
 				if strings.HasPrefix(utxo.Unit, policyID) {
-					totalNfts++
+					qty, err := strconv.Atoi(utxo.Quantity)
+					if err != nil {
+						log.Printf("Could not get quantity from utxo: %v\n%v", utxo, err)
+					}
+
+					if utxo.Decimals > 0 {
+						qty = int(math.Floor(float64(qty) / powInt(utxo.Decimals)))
+					}
+
+					totalNfts+= qty
 				}
 			}
 		}
