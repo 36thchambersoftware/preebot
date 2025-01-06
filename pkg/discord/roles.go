@@ -119,11 +119,11 @@ func AssignRoleByID(guildID, userID, roleID string) (*discordgo.Role, error) {
 	return role, nil
 }
 
-func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
+func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 	config := preeb.LoadConfig(guildID)
-	user := preeb.LoadUser(userID)
+
 	// Get existing roles
-	member, err := S.GuildMember(guildID, userID)
+	member, err := S.GuildMember(guildID, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
 			// Check if the user should have this role ...
 			if (!slices.Contains(rolesToAdd, currentRoleID)) {
 				// and remove it if not
-				err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
+				err := S.GuildMemberRoleRemove(guildID, user.ID, currentRoleID)
 				if err != nil {
 					slog.Error("could not remove role", "role", currentRoleID, "error", err)
 					continue
@@ -181,7 +181,7 @@ func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
 			// Check if the user should have this role ...
 			if (!slices.Contains(rolesToAdd, currentRoleID)) {
 				// and remove it if not
-				err := S.GuildMemberRoleRemove(guildID, userID, currentRoleID)
+				err := S.GuildMemberRoleRemove(guildID, user.ID, currentRoleID)
 				if err != nil {
 					slog.Error("could not remove role", "role", currentRoleID, "error", err)
 					continue
@@ -199,7 +199,7 @@ func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
 	var assignedRoles []string
 
 	for _, roleID := range allQualifiedRoles {
-		role, err := AssignRoleByID(guildID, userID, roleID)
+		role, err := AssignRoleByID(guildID, user.ID, roleID)
 		if err != nil {
 			return nil, err
 		}
@@ -215,11 +215,12 @@ func AssignQualifiedRoles(guildID, userID string) ([]string, error) {
 func AutomaticRoleChecker() {
 	// Get guild id
 	configs := preeb.LoadConfigs()
-	for _, config := range configs {
-		// Get verified guild members
-		users := preeb.LoadUsers()
 
-		loadCustodianData(config.Custodians)
+	// Get verified guild members
+	users := preeb.LoadUsers()
+
+	for _, config := range configs {
+		// TODO: implement custodial maybe. loadCustodianData(config.Custodians)
 
 		// Get guild member linked wallets
 		for _, user := range users {
@@ -228,7 +229,7 @@ func AutomaticRoleChecker() {
 			defer cancel()
 
 			// Check roles
-			_, err := AssignQualifiedRoles(config.GuildID, user.ID)
+			_, err := AssignQualifiedRoles(config.GuildID, user)
 			if err != nil {
 				slog.Error("could not assign roles", "user", user.ID, "error", err)
 			}
