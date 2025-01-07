@@ -3,13 +3,9 @@ package blockfrost
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"log/slog"
 	"math"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -144,44 +140,23 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 	return assets, nil
 }
 
-func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]AddressExtended, error) {
-	var allAddresses []AddressExtended
+func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]bfg.AddressExtended, error) {
+	var allAddresses []bfg.AddressExtended
 	for _, wallet := range wallets {
 		for _, addr := range wallet {
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://cardano-mainnet.blockfrost.io/api/v0/addresses/%s/extended", addr), nil)
+			address, err := client.AddressExtended(ctx, string(addr))
 			if err != nil {
 				return nil, err
 			}
 
-			blockfrostProjectID := loadBlockfrostProjectID()
-			req.Header.Set("Project_id", blockfrostProjectID)
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return nil, err
-			}
-			defer resp.Body.Close()
-
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-
-			var extended AddressExtended
-			json.Unmarshal(body, &extended)
-			// address, err := client.Address(ctx, string(addr))
-			// if err != nil {
-			// 	return nil, err
-			// }
-
-			allAddresses = append(allAddresses, extended)
+			allAddresses = append(allAddresses, address)
 		}
 	}
 
 	return allAddresses, nil
 }
 
-func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyID, allAddresses []AddressExtended) int {
+func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyID, allAddresses []bfg.AddressExtended) int {
 	totalNfts := 0
 
 	powInt := func (decimals int) float64 {
@@ -197,8 +172,8 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyID, allA
 						log.Printf("Could not get quantity from utxo: %v\n%v", utxo, err)
 					}
 
-					if utxo.Decimals > 0 {
-						qty = int(math.Floor(float64(qty) / powInt(utxo.Decimals)))
+					if utxo.Decimals != nil && *utxo.Decimals > 0 {
+						qty = int(math.Floor(float64(qty) / powInt(*utxo.Decimals)))
 					}
 
 					totalNfts+= qty
