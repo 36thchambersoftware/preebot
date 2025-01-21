@@ -85,7 +85,7 @@ func LoadUser(userID string) User {
 // 	ctx := context.Background()
 // 	ctx, cancel := context.WithCancel(ctx)
 // 	defer cancel()
-	
+
 // 	result, err := collection.ReplaceOne(ctx, filter, u, opts)
 // 	if err != nil {
 // 		log.Fatalf("cannot save user: %v", err)
@@ -155,7 +155,7 @@ func SaveUser(user User) {
 func LoadUsers() []User {
 	files, err := os.ReadDir(USER_FILE_PATH)
 	if err != nil {
-		slog.Error("LOAD USERS", "could not load configs", err)
+		slog.Error("LOAD USERS", "could not load users", err)
 		return nil
 	}
 
