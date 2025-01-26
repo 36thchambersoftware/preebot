@@ -88,7 +88,10 @@ func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
 		log.Printf("Could not get account details: \aADDRESS: %v \nERROR: %v", address, err)
 	}
 
-	account := GetStakeInfo(ctx, *stakeDetails.StakeAddress)
+	var account bfg.Account
+	if stakeDetails.Address != "" {
+		account = GetStakeInfo(ctx, *stakeDetails.StakeAddress)
+	}
 
 	return account
 }
