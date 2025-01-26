@@ -112,17 +112,17 @@ func main() {
 		log.Fatalf("Cannot open the session: %v", err)
 	}
 
-	registeredCommands, err := discord.S.ApplicationCommands(discord.S.State.User.ID, "")
-	if err != nil {
-		log.Panicf("Cannot retrieve commands:\n%v", err)
-	}
-	_, err = discord.S.ApplicationCommandBulkOverwrite(discord.S.State.User.ID, *discord.GuildID, registeredCommands)
-	if err != nil {
-		log.Panicf("Cannot overwrite commands:\n%v", err)
-	}
+	// registeredCommands, err := discord.S.ApplicationCommands(discord.S.State.User.ID, "")
+	// if err != nil {
+	// 	log.Panicf("Cannot retrieve commands:\n%v", err)
+	// }
+	// _, err = discord.S.ApplicationCommandBulkOverwrite(discord.S.State.User.ID, *discord.GuildID, registeredCommands)
+	// if err != nil {
+	// 	log.Panicf("Cannot overwrite commands:\n%v", err)
+	// }
 
 	log.Println("Adding commands...")
-	registeredCommands = make([]*discordgo.ApplicationCommand, len(commands))
+	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
 		cmd, err := discord.S.ApplicationCommandCreate(discord.S.State.User.ID, *discord.GuildID, v)
 		if err != nil {
