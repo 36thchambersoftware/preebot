@@ -3,12 +3,14 @@ package discord
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"preebot/pkg/blockfrost"
 	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/exp/rand"
 )
 
 var (
@@ -17,7 +19,7 @@ var (
 	LINK_WALLET_COMMAND        = discordgo.ApplicationCommand{
 		Version:     "0.01",
 		Name:        "link-wallet",
-		Description: "Link your wallet to receive delegator roles. Start by sending " + LINK_WALLET_AMOUNT_DISPLAY + " to yourself.",
+		Description: "Link your wallet to receive delegator roles.",
 		Options: []*discordgo.ApplicationCommandOption{{
 			Type:        discordgo.ApplicationCommandOptionString,
 			Name:        "address",
@@ -71,6 +73,10 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 			}
 		}
 	}
+
+	amount := rand.Intn(1000000)
+	LINK_WALLET_AMOUNT = fmt.Sprintf("1%s",strconv.Itoa(amount))
+	LINK_WALLET_AMOUNT_DISPLAY = fmt.Sprintf("1.%s", strconv.Itoa(amount)) // strconv.FormatFloat(1.0 + (float64(amount) / float64(1000000)), 'f', -1, 64)
 
 	linkAmtMsg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: LINK_WALLET_AMOUNT_DISPLAY,

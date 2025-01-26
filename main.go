@@ -35,7 +35,6 @@ var (
 		&discord.CONFIGURE_DELEGATOR_ROLE_COMMAND,
 		&discord.CONFIGURE_POLICY_ROLE_COMMAND,
 		&discord.CONFIGURE_ENGAGE_ROLE_COMMAND,
-		&discord.CONFIGURE_CUSTODIAL_COMMAND,
 		&discord.LIST_DELEGATOR_ROLES_COMMAND,
 		&discord.LIST_POLICY_ROLES_COMMAND,
 		&discord.CHECK_ANY_WALLET_WHITELIST_COMMAND,
@@ -50,7 +49,6 @@ var (
 		discord.CONFIGURE_DELEGATOR_ROLE_COMMAND.Name: 		discord.CONFIGURE_DELEGATOR_ROLE_HANDLER,
 		discord.CONFIGURE_POLICY_ROLE_COMMAND.Name:    		discord.CONFIGURE_POLICY_ROLE_HANDLER,
 		discord.CONFIGURE_ENGAGE_ROLE_COMMAND.Name:    		discord.CONFIGURE_ENGAGE_ROLE_HANDLER,
-		discord.CONFIGURE_CUSTODIAL_COMMAND.Name:      		discord.CONFIGURE_CUSTODIAL_HANDLER,
 		discord.LIST_DELEGATOR_ROLES_COMMAND.Name:     		discord.LIST_DELEGATOR_ROLES_HANDLER,
 		discord.LIST_POLICY_ROLES_COMMAND.Name:        		discord.LIST_POLICY_ROLES_HANDLER,
 		discord.CHECK_ANY_WALLET_WHITELIST_COMMAND.Name:    discord.CHECK_ANY_WALLET_WHITELIST_HANDLER,
@@ -114,8 +112,17 @@ func main() {
 		log.Fatalf("Cannot open the session: %v", err)
 	}
 
+	registeredCommands, err := discord.S.ApplicationCommands(discord.S.State.User.ID, "")
+	if err != nil {
+		log.Panicf("Cannot retrieve commands:\n%v", err)
+	}
+	_, err = discord.S.ApplicationCommandBulkOverwrite(discord.S.State.User.ID, *discord.GuildID, registeredCommands)
+	if err != nil {
+		log.Panicf("Cannot overwrite commands:\n%v", err)
+	}
+
 	log.Println("Adding commands...")
-	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
+	registeredCommands = make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
 		cmd, err := discord.S.ApplicationCommandCreate(discord.S.State.User.ID, *discord.GuildID, v)
 		if err != nil {
