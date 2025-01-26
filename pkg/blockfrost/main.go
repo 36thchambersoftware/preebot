@@ -89,7 +89,7 @@ func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
 	}
 
 	var account bfg.Account
-	if stakeDetails.Address != "" {
+	if stakeDetails.StakeAddress != nil {
 		account = GetStakeInfo(ctx, *stakeDetails.StakeAddress)
 	}
 
