@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"log/slog"
 	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
@@ -23,6 +24,7 @@ var CHECK_MY_WALLETS_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 	})
 
 	user := preeb.LoadUser(i.Member.User.ID)
+	slog.Info(CHECK_MY_WALLETS_COMMAND.Name, "USER_ID", i.Member.User.ID)
 
 	if len(user.Wallets) == 0 {
 		content := "You need to link your wallet first. Please use /link-wallet."
@@ -35,6 +37,7 @@ var CHECK_MY_WALLETS_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 
 	newRoleIDs, err := AssignQualifiedRoles(i.GuildID, user)
 	if err != nil {
+		slog.Error("could not assign roles", "ERROR", err)
 		S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Something went wrong! Maybe open a #support-ticket ",
 			Flags:   discordgo.MessageFlagsEphemeral,
@@ -42,8 +45,17 @@ var CHECK_MY_WALLETS_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 		return
 	}
 
+	slog.Info(CHECK_MY_WALLETS_COMMAND.Name, "ROLES", newRoleIDs)
 	content := FormatNewRolesMessage(user, newRoleIDs)
-	S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+	_, err = S.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,
 	})
+
+	if err != nil {
+		slog.Error("could not respond", "ERROR", err)
+	}
+	// S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+	// 	Content: content,
+	// 	Flags:   discordgo.MessageFlagsEphemeral,
+	// })
 }

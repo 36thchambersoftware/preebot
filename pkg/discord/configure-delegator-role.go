@@ -2,6 +2,7 @@ package discord
 
 import (
 	"fmt"
+	"log/slog"
 	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
@@ -37,6 +38,7 @@ var CONFIGURE_DELEGATOR_ROLE_COMMAND = discordgo.ApplicationCommand{
 }
 
 var CONFIGURE_DELEGATOR_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	slog.Info(CONFIGURE_DELEGATOR_ROLE_COMMAND.Name, "USER_ID", i.Member.User.ID)
 	options := GetOptions(i)
 
 	role := options["role"].RoleValue(s, i.GuildID)

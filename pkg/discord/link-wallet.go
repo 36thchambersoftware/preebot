@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -33,6 +34,7 @@ var (
 var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := GetOptions(i)
 	address := options["address"].StringValue()
+	slog.Info(LINK_WALLET_COMMAND.Name, "USER_ID", i.Member.User.ID, "ADDRESS", address)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -62,15 +64,13 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	})
 
 	user := preeb.LoadUser(i.Member.User.ID)
-	for _, wallet := range user.Wallets {
-		for _, addr := range wallet {
-			if address == addr.String() {
-				content := "Your wallet has already been linked! But feel free to link another."
-				s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-					Content: &content,
-				})
-				return
-			}
+	for _, addr := range user.Wallets {
+		if address == addr.String() {
+			content := "Your wallet has already been linked! But feel free to link another."
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &content,
+			})
+			return
 		}
 	}
 
@@ -129,7 +129,7 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 
 	if walletLinked {
 		account := blockfrost.GetAccountByAddress(ctx, address)
-		user.Wallets[preeb.StakeAddress(account.StakeAddress)] = append(user.Wallets[preeb.StakeAddress(account.StakeAddress)], preeb.Address(address))
+		user.Wallets[preeb.StakeAddress(account.StakeAddress)] = preeb.Address(address)
 
 		if user.ID == "" {
 			user.ID = i.Member.User.ID

@@ -18,7 +18,7 @@ type User struct {
 }
 
 type (
-	Wallets      map[StakeAddress][]Address
+	Wallets      map[StakeAddress]Address
 	StakeAddress string
 	Address      string
 )

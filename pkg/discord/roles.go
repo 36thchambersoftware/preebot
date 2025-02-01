@@ -125,6 +125,10 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 	// Get existing roles
 	member, err := S.GuildMember(guildID, user.ID)
 	if err != nil {
+		if member == nil || member.GuildID == "" || member.GuildID != guildID {
+			// User does not exist in this server, skip them.
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -245,11 +249,9 @@ func FormatNewRolesMessage(user preeb.User, roleIDs []string) (string) {
 
 	walletList := ""
 	n := 0
-	for _, stakeAddress := range user.Wallets {
-		for _, addr := range stakeAddress {
-			n++
-			walletList = walletList + strconv.Itoa(n) + ". -# " + string(addr) + "\n"
-		}
+	for _, addr := range user.Wallets {
+		n++
+		walletList = walletList + strconv.Itoa(n) + ". -# " + string(addr) + "\n"
 	}
 
 	var b bytes.Buffer

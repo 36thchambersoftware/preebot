@@ -145,15 +145,13 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 
 func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]bfg.AddressExtended, error) {
 	var allAddresses []bfg.AddressExtended
-	for _, wallet := range wallets {
-		for _, addr := range wallet {
-			address, err := client.AddressExtended(ctx, string(addr))
-			if err != nil {
-				return nil, err
-			}
-
-			allAddresses = append(allAddresses, address)
+	for _, addr := range wallets {
+		address, err := client.AddressExtended(ctx, addr.String())
+		if err != nil {
+			return nil, err
 		}
+
+		allAddresses = append(allAddresses, address)
 	}
 
 	return allAddresses, nil
