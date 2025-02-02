@@ -30,8 +30,10 @@ func Connect() (*mongo.Client, context.Context, context.CancelFunc, error) {
 	if !ok {
 		slog.Error("Could not get mongo db password")
 	}
+
+	PREEBOT_MONGODB_INSTANCE, ok := os.LookupEnv("PREEBOT_MONGODB_INSTANCE")
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	connectionString := fmt.Sprintf("mongodb+srv://preebot:%s@preebot.tbih8.mongodb.net/?retryWrites=true&w=majority&appName=preebot", PREEBOT_MONGODB_PASSWORD)
+	connectionString := fmt.Sprintf("mongodb+srv://preebot:%s@%s", PREEBOT_MONGODB_PASSWORD, PREEBOT_MONGODB_INSTANCE)
 	opts := options.Client().ApplyURI(connectionString).SetServerAPIOptions(serverAPI)
 
 	// Create a new DB and connect to the server
