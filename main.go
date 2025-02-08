@@ -112,19 +112,10 @@ func main() {
 		log.Fatalf("Cannot open the session: %v", err)
 	}
 
-	// registeredCommands, err := discord.S.ApplicationCommands(discord.S.State.User.ID, "")
-	// if err != nil {
-	// 	log.Panicf("Cannot retrieve commands:\n%v", err)
-	// }
-	// _, err = discord.S.ApplicationCommandBulkOverwrite(discord.S.State.User.ID, *discord.GuildID, registeredCommands)
-	// if err != nil {
-	// 	log.Panicf("Cannot overwrite commands:\n%v", err)
-	// }
-
 	log.Println("Adding commands...")
 	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
-		cmd, err := discord.S.ApplicationCommandCreate(discord.S.State.User.ID, *discord.GuildID, v)
+		cmd, err := discord.S.ApplicationCommandCreate(discord.S.State.User.ID, discord.S.State.Application.GuildID, v)
 		if err != nil {
 			log.Panicf("Cannot create '%v' command: %v", v.Name, err)
 		}
@@ -138,16 +129,16 @@ func main() {
 	log.Println("Press Ctrl+C to exit")
 	<-stop
 
-	if *discord.RemoveCommands {
-		log.Println("Removing commands...")
 
-		for _, v := range registeredCommands {
-			err := discord.S.ApplicationCommandDelete(discord.S.State.User.ID, *discord.GuildID, v.ID)
-			if err != nil {
-				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
-			}
+	log.Println("Removing commands...")
+
+	for _, v := range registeredCommands {
+		err := discord.S.ApplicationCommandDelete(discord.S.State.User.ID, discord.S.State.Application.GuildID, v.ID)
+		if err != nil {
+			log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
 		}
 	}
+
 
 	log.Println("Gracefully shutting down.")
 }

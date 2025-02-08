@@ -1,7 +1,7 @@
 package discord
 
 import (
-	"flag"
+	"context"
 	"log"
 	"log/slog"
 	"net/url"
@@ -10,13 +10,6 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-)
-
-// Bot parameters
-var (
-	GuildID        = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
-	BotToken       = flag.String("token", "", "Bot access token")
-	RemoveCommands = flag.Bool("rmcmd", true, "Remove all commands after shutting down or not")
 )
 
 var (
@@ -41,10 +34,30 @@ func initDiscord() {
 		log.Fatalf("Invalid bot parameters: %v", err)
 	}
 
-	go automaticRoleChecker()
+	RefreshCommands()
+
+	ctx := context.Background()
+	go automaticRoleChecker(ctx)
 }
 
-func automaticRoleChecker() {
+func RefreshCommands() {
+	appId, ok := os.LookupEnv("PREEBOT_APPLICATION_ID")
+	if !ok {
+		log.Fatalf("Missing application id")
+	}
+	registeredCommands, err := S.ApplicationCommands(appId, "")
+	if err != nil {
+		log.Panicf("Cannot retrieve commands:\n%v", err)
+	}
+
+	guildID := ""
+	_, err = S.ApplicationCommandBulkOverwrite(appId, guildID, registeredCommands)
+	if err != nil {
+		log.Panicf("Cannot overwrite commands:\n%v", err)
+	}
+}
+
+func automaticRoleChecker(ctx context.Context) {
 	PREEBOT_ROLE_CHECK_INTERVAL, ok := os.LookupEnv("PREEBOT_ROLE_CHECK_INTERVAL")
 	if !ok {
 		slog.Error("Interval not set. Roles will not be updated.", "PREEBOT_ROLE_CHECK_INTERVAL", PREEBOT_ROLE_CHECK_INTERVAL)
@@ -58,10 +71,14 @@ func automaticRoleChecker() {
 	}
 
 	for {
-		slog.Info("Checking roles...")
-		AutomaticRoleChecker()
-		time.Sleep(time.Duration(interval) * time.Minute)
-	}
+        select {
+        case <-time.After(time.Duration(interval) * time.Minute):
+            slog.Info("Checking roles...")
+            AutomaticRoleChecker()
+        case <-ctx.Done():
+            return
+        }
+    }
 }
 
 func initWebhook() {
