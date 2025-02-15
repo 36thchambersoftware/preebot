@@ -237,9 +237,8 @@ func HandleAddress(ctx context.Context, addr string) (string, error) {
 func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID string) (*int, error) {
 	var epoch int
 
-	query := bfg.APIQueryParams{Order: "desc"}
-
-	history, err := client.AccountDelegationHistory(ctx, stakeAddress, query)
+	APIQueryParams.Order = "desc"
+	history, err := client.AccountDelegationHistory(ctx, stakeAddress, APIQueryParams)
 	if err != nil {
 		return nil, err
 	}
