@@ -74,7 +74,7 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 		for _, stakeAddress := range stakeAddresses {
 			epoch, err := blockfrost.EpochsDelegatedToPool(ctx, string(stakeAddress), poolID)
 			if err != nil {
-				slog.Error("unable to get history", "stake", stakeAddress)
+				slog.Error("unable to get history", "stake", stakeAddress, "ERROR", err)
 				continue
 			}
 
