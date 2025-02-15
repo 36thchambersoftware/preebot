@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -231,4 +232,40 @@ func HandleAddress(ctx context.Context, addr string) (string, error) {
 	}
 
 	return addr, nil
+}
+
+func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID string) (*int, error) {
+	var epoch int
+
+	query := bfg.APIQueryParams{Order: "desc"}
+
+	history, err := client.AccountDelegationHistory(ctx, stakeAddress, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var stakeHistory []bfg.AccountDelegationHistory
+
+	if len(history) > 0 {
+		latestPool := history[0].PoolID
+		if latestPool == poolID || poolID == "" {
+			for i := 0; i < len(history)-1; i++ {
+				if history[i].PoolID == latestPool {
+					stakeHistory = append(stakeHistory, history[i])
+				} else {
+					break
+				}
+			}
+		}
+	}
+
+	if len(stakeHistory) > 0 {
+		sort.Slice(stakeHistory, func(i, j int) bool {
+			return  stakeHistory[i].ActiveEpoch < stakeHistory[j].ActiveEpoch
+		})
+
+		epoch = int(stakeHistory[0].ActiveEpoch)
+	}
+
+	return &epoch, nil
 }

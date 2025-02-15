@@ -38,6 +38,7 @@ var (
 		&discord.LIST_DELEGATOR_ROLES_COMMAND,
 		&discord.LIST_POLICY_ROLES_COMMAND,
 		&discord.CHECK_ANY_WALLET_WHITELIST_COMMAND,
+		&discord.LEADERBOARD_EPOCH_COMMAND,
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
@@ -52,6 +53,7 @@ var (
 		discord.LIST_DELEGATOR_ROLES_COMMAND.Name:     		discord.LIST_DELEGATOR_ROLES_HANDLER,
 		discord.LIST_POLICY_ROLES_COMMAND.Name:        		discord.LIST_POLICY_ROLES_HANDLER,
 		discord.CHECK_ANY_WALLET_WHITELIST_COMMAND.Name:    discord.CHECK_ANY_WALLET_WHITELIST_HANDLER,
+		discord.LEADERBOARD_EPOCH_COMMAND.Name:				discord.LEADERBOARD_EPOCH_HANDLER,
 	}
 	lockout         = make(map[string]struct{})
 	lockoutResponse = &discordgo.InteractionResponse{

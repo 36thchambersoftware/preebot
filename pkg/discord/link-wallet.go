@@ -135,10 +135,6 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 			user.ID = i.Member.User.ID
 		}
 
-		if user.DisplayName == "" {
-			user.DisplayName = i.Member.User.GlobalName
-		}
-
 		// preeb.SaveUser(user)
 		user.Save()
 	} else {
