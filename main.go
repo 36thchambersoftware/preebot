@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 
 	mongo "preebot/pkg/db"
 	"preebot/pkg/discord"
+	"preebot/pkg/logger"
 
 	mongodb "go.mongodb.org/mongo-driver/mongo"
 
@@ -79,6 +81,7 @@ func init() {
 
 func main() {
 	defer mongo.Close(mdb, dbctx, dbcancel)
+	l := logger.Record
 
 	// Setup discord
 	discord.S.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -107,19 +110,19 @@ func main() {
 	})
 
 	discord.S.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
+		logger.Record.Info("LOGGED IN", "USER", fmt.Sprintf("%v#%v", s.State.User.Username, s.State.User.Discriminator))
 	})
 	err := discord.S.Open()
 	if err != nil {
-		log.Fatalf("Cannot open the session: %v", err)
+		l.Info("Cannot open the session", "ERROR", err)
 	}
 
-	log.Println("Adding commands...")
+	l.Info("Adding commands...")
 	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
 		cmd, err := discord.S.ApplicationCommandCreate(discord.S.State.User.ID, discord.S.State.Application.GuildID, v)
 		if err != nil {
-			log.Panicf("Cannot create '%v' command: %v", v.Name, err)
+			l.Error("could not add command", "COMMAND", v.Name, "ERROR", err)
 		}
 		registeredCommands[i] = cmd
 	}

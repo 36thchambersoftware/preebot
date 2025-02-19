@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 
 	bfg "github.com/blockfrost/blockfrost-go"
@@ -236,10 +237,11 @@ func HandleAddress(ctx context.Context, addr string) (string, error) {
 
 func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID string) (*int, error) {
 	var epoch int
-
+	l := logger.Record.WithGroup("EpochsDelegatedToPool")
 	APIQueryParams.Order = "desc"
 	history, err := client.AccountDelegationHistory(ctx, stakeAddress, APIQueryParams)
 	if err != nil {
+		l.Error("could not get account history", "ERROR", err)
 		return nil, err
 	}
 
@@ -248,7 +250,7 @@ func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID stri
 	if len(history) > 0 {
 		latestPool := history[0].PoolID
 		if latestPool == poolID || poolID == "" {
-			for i := 0; i < len(history)-1; i++ {
+			for i := 0; i < len(history); i++ {
 				if history[i].PoolID == latestPool {
 					stakeHistory = append(stakeHistory, history[i])
 				} else {
@@ -256,14 +258,20 @@ func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID stri
 				}
 			}
 		}
+	} else {
+		l.Info("no history", "HISTORY", history)
 	}
 
-	if len(stakeHistory) > 0 {
+	if len(stakeHistory) > 1 {
 		sort.Slice(stakeHistory, func(i, j int) bool {
 			return  stakeHistory[i].ActiveEpoch < stakeHistory[j].ActiveEpoch
 		})
 
 		epoch = int(stakeHistory[0].ActiveEpoch)
+	} else if len(stakeHistory) == 1 {
+		epoch = int(stakeHistory[0].ActiveEpoch)
+	} else {
+		l.Info("no stake", "STAKEHISTORY", stakeHistory)
 	}
 
 	return &epoch, nil

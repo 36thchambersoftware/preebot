@@ -3,10 +3,10 @@ package discord
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"maps"
 	"preebot/pkg/blockfrost"
 	"preebot/pkg/koios"
+	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 	"slices"
 	"sort"
@@ -42,13 +42,15 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 		return
 	}
 
+	l := logger.Record
+	l = l.WithGroup("LEADERBOARD-EPOCH")
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second*20)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
 
 	tip, err := koios.Tip(ctx)
 	if err != nil {
-		slog.Error("could not get tip data", "ERROR", err)
+		l.Error("could not get tip data", "ERROR", err)
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -62,7 +64,7 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 
 	m, err := blockfrost.GetPoolMetaData(ctx, poolID)
 	if err != nil {
-		slog.Error("could not get pool data", "ERROR", err)
+		l.Error("could not get pool data", "ERROR", err)
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -95,12 +97,19 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 			ID: user.ID,
 		}
 
+		member, err := S.GuildMember(i.GuildID, user.ID)
+		if err != nil {
+			l.Warn("could not get member, skipping...", "GuildID", i.GuildID, "UserID", user.ID, "ERROR", err)
+			continue
+		}
+
 		stakeAddresses := slices.Collect(maps.Keys(user.Wallets))
 		var epochs []int
 		for _, stakeAddress := range stakeAddresses {
+			l.Info("getting history", "USER", user.ID, "NICKNAME", member.DisplayName(), "STAKE", string(stakeAddress))
 			epoch, err := blockfrost.EpochsDelegatedToPool(ctx, string(stakeAddress), poolID)
 			if err != nil {
-				slog.Error("unable to get history", "stake", stakeAddress, "ERROR", err)
+				l.Error("unable to get history", "stake", stakeAddress, "ERROR", err)
 				continue
 			}
 
@@ -158,7 +167,7 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 
 	_, err = s.ChannelMessageSendEmbed(i.ChannelID, &embed)
 	if err != nil {
-		slog.Error("could not send message embed", "ERROR", err)
+		l.Error("could not send message embed", "ERROR", err)
 	}
 
 	s.InteractionResponseDelete(i.Interaction)
