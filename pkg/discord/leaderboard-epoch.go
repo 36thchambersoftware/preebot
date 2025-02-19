@@ -92,21 +92,32 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 	}
 	leaderboard := []Leader{}
 
+	members, err := S.GuildMembers(i.GuildID, "0", 1000)
+	if err != nil {
+		l.Error("could not get members", "GuildID", i.GuildID, "ERROR", err)
+	}
+
 	for _, user := range users {
-		leader := Leader{
-			ID: user.ID,
+		found := false
+		for _, member := range members {
+			if member.User.ID == user.ID {
+				found = true
+				break
+			}
 		}
 
-		member, err := S.GuildMember(i.GuildID, user.ID)
-		if err != nil {
-			l.Warn("could not get member, skipping...", "GuildID", i.GuildID, "UserID", user.ID, "ERROR", err)
+		if !found {
 			continue
+		}
+
+		leader := Leader{
+			ID: user.ID,
 		}
 
 		stakeAddresses := slices.Collect(maps.Keys(user.Wallets))
 		var epochs []int
 		for _, stakeAddress := range stakeAddresses {
-			l.Info("getting history", "USER", user.ID, "NICKNAME", member.DisplayName(), "STAKE", string(stakeAddress))
+			l.Info("getting history", "USER", user.ID, "STAKE", string(stakeAddress))
 			epoch, err := blockfrost.EpochsDelegatedToPool(ctx, string(stakeAddress), poolID)
 			if err != nil {
 				l.Error("unable to get history", "stake", stakeAddress, "ERROR", err)
