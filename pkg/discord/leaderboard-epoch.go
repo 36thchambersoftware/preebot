@@ -124,14 +124,14 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 				continue
 			}
 
-			if epoch != nil {
+			if epoch != nil && *epoch != 0 {
 				epochs = append(epochs, *epoch)
 			}
 		}
 
 		if len(epochs) > 0 {
 			slices.Sort(epochs)
-			leader.ActiveEpoch = epochs[len(epochs)-1]
+			leader.ActiveEpoch = epochs[0]
 			if leader.ActiveEpoch > 0 {
 				leaderboard = append(leaderboard, leader)
 			}
