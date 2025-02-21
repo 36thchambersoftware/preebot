@@ -38,6 +38,7 @@ func initDiscord() {
 
 	ctx := context.Background()
 	go automaticRoleChecker(ctx)
+	go automaticPoolBlocks(ctx)
 }
 
 func RefreshCommands() {
@@ -76,9 +77,24 @@ func automaticRoleChecker(ctx context.Context) {
             slog.Info("Checking roles...")
             AutomaticRoleChecker()
         case <-ctx.Done():
+			RefreshCommands()
             return
         }
     }
+}
+
+func automaticPoolBlocks(ctx context.Context) {
+	var lastBlock string
+	for {
+		select {
+		case <-time.After(time.Minute):
+			slog.Info("Getting Pool Info")
+			lastBlock = AutomaticPoolBlocks(ctx, lastBlock)
+		case <-ctx.Done():
+			RefreshCommands()
+			return
+		}
+	}
 }
 
 func initWebhook() {

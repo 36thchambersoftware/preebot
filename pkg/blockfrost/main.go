@@ -276,3 +276,41 @@ func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID stri
 
 	return &epoch, nil
 }
+
+func PoolInfo(ctx context.Context, poolID string) (*bfg.Pool, error) {
+	info, err := client.Pool(ctx, poolID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &info, nil
+}
+
+func PoolHistory(ctx context.Context, poolID string) ([]bfg.PoolHistory, error) {
+	APIQueryParams.Order = "desc"
+	history, err := client.PoolHistory(ctx, poolID, APIQueryParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return history, nil
+}
+
+func PoolMeta(ctx context.Context, poolID string) (*bfg.PoolMetadata, error) {
+	info, err := client.PoolMetadata(ctx, poolID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &info, nil
+}
+
+func PoolBlocks(ctx context.Context, poolID string) (bfg.PoolBlocks, error) {
+	APIQueryParams.Order = "desc"
+	blocks, err := client.PoolBlocks(ctx, poolID, APIQueryParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return blocks, nil
+}
