@@ -155,7 +155,7 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 		Description: fmt.Sprintf("Length in epochs staked to %s", *m.Name),
 		Color: 0x58d68d,
 		Footer:      &discordgo.MessageEmbedFooter{Text: "PREEBOT thanks you for delegating!"},
-		Thumbnail:   &discordgo.MessageEmbedThumbnail{URL: "https://preeb.cloud/wp-content/uploads/2024/06/Transparent-png.png", Height: 50, Width: 50},
+		Thumbnail:   &discordgo.MessageEmbedThumbnail{URL: preeb.LogoImage, Height: 50, Width: 50},
 		Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
 		Fields:      []*discordgo.MessageEmbedField{
 			{

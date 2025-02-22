@@ -52,7 +52,7 @@ func AutomaticPoolBlocks(ctx context.Context, lastBlock string) (string) {
 				Description: fmt.Sprintf("Update!"),
 				Color: 0x58d68d,
 				Footer:      &discordgo.MessageEmbedFooter{Text: "PREEBOT thanks you for delegating!"},
-				Thumbnail:   &discordgo.MessageEmbedThumbnail{URL: preeb.Logo, Height: 50, Width: 50},
+				Thumbnail:   &discordgo.MessageEmbedThumbnail{URL: preeb.BlockzImage, Height: 50, Width: 50},
 				Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
 				Fields:      embedFields,
 			}
