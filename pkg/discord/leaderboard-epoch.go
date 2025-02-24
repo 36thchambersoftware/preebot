@@ -142,38 +142,28 @@ var LEADERBOARD_EPOCH_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 		return leaderboard[i].ActiveEpoch < leaderboard[j].ActiveEpoch
 	})
 
-	var names, activeEpoch, totalsEpochs string
-
+	var leaderFields []*discordgo.MessageEmbedField
+	var leaderCount uint
 	for _, leader := range leaderboard {
-		names += fmt.Sprintf("<@%s>\n", leader.ID)
-		activeEpoch += fmt.Sprintf("%d\n", leader.ActiveEpoch)
-		totalsEpochs += fmt.Sprintf("%d\n", currentEpoch - leader.ActiveEpoch)
+		if (currentEpoch - leader.ActiveEpoch > 1) && leaderCount <= 20 {
+			leaderCount++
+			field := discordgo.MessageEmbedField{
+				Name: "",
+				Value: fmt.Sprintf("%d. <@%s> `Total Epochs: %d`", leaderCount, leader.ID, currentEpoch - leader.ActiveEpoch),
+				Inline: false,
+			}
+			leaderFields = append(leaderFields, &field)
+		}
 	}
 
 	embed := discordgo.MessageEmbed{
-		Title: "Epoch Leaderboard",
-		Description: fmt.Sprintf("Length in epochs staked to %s", *m.Name),
+		Title: "Epoch Leaderboard (Top 20)",
+		Description: fmt.Sprintf("Length in epochs staked to %s\nNOTE: It take 2 epochs to become an active delegator.", *m.Name),
 		Color: 0x58d68d,
 		Footer:      &discordgo.MessageEmbedFooter{Text: "PREEBOT thanks you for delegating!"},
 		Thumbnail:   &discordgo.MessageEmbedThumbnail{URL: preeb.LogoImage, Height: 50, Width: 50},
 		Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
-		Fields:      []*discordgo.MessageEmbedField{
-			{
-				Name:   "Member",
-				Value: names,
-				Inline: true,
-			},
-			{
-				Name:   "Active Epoch",
-				Value:  activeEpoch,
-				Inline: true,
-			},
-			{
-				Name:   "Total Epochs",
-				Value:  totalsEpochs,
-				Inline: true,
-			},
-		},
+		Fields:      leaderFields,
 	}
 
 	_, err = s.ChannelMessageSendEmbed(i.ChannelID, &embed)
