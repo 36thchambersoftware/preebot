@@ -15,6 +15,13 @@ var CONFIGURE_POLICY_ROLE_COMMAND = discordgo.ApplicationCommand{
 	DefaultMemberPermissions: &ADMIN,
 	Options: []*discordgo.ApplicationCommandOption{
 		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "policyid",
+			Description: "The a policy ID to link to your discord",
+			Required:    true,
+			MaxLength:   255,
+		},
+		{
 			Type:        discordgo.ApplicationCommandOptionRole,
 			Name:        "role",
 			Description: "The role to associate with the attached policy range",
@@ -40,6 +47,7 @@ var CONFIGURE_POLICY_ROLE_COMMAND = discordgo.ApplicationCommand{
 var CONFIGURE_POLICY_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := GetOptions(i)
 
+	policyID := options["policyid"].StringValue()
 	role := options["role"].RoleValue(s, i.GuildID)
 	min := options["min"].IntValue()
 	maybemax, ok := options["max"]
@@ -59,12 +67,21 @@ var CONFIGURE_POLICY_ROLE_HANDLER = func(s *discordgo.Session, i *discordgo.Inte
 
 	config := preeb.LoadConfig(i.GuildID)
 
-	order := int64(len(config.PolicyRoles) + 1)
+	policy, ok := config.PolicyIDs[policyID]; 
+	if ok {
+		if policy.Roles == nil {
+			policy.Roles = make(preeb.PolicyRoles)
+		}
+	}
+
+	order := int64(len(policy.Roles) + 1)
 
 	bounds := preeb.RoleBounds{Min: preeb.Bound(min), Max: preeb.Bound(max), Order: order}
 
+	policy.Roles[role.ID] = bounds
+
 	if bounds.IsValid() {
-		config.PolicyRoles[role.ID] = bounds
+		config.PolicyIDs[policyID] = policy
 		config.Save()
 		return
 	}

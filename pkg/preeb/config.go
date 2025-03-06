@@ -12,30 +12,20 @@ import (
 
 type Configs []Config
 
-type Config struct {
-	PolicyRoles    PolicyRoles    `bson:"policy_roles,omitempty"`
-	DelegatorRoles DelegatorRoles `bson:"delegator_roles,omitempty"`
-	PoolIDs        PoolID         `bson:"pool_ids,omitempty"`
-	PoolChannelID  string         `bson:"pool_channel_id,omitempty"`
-	PolicyIDs      PolicyID       `bson:"policy_ids,omitempty"`
-	EngageRole     string         `bson:"engage_role,omitempty"`
-	GuildID        string         `bson:"guild_id,omitempty"`
-	Custodians     []Custodian    `bson:"custodians,omitempty"`
-}
-
 type (
+	Config struct {
+		DelegatorRoles  DelegatorRoles `bson:"delegator_roles,omitempty"`
+		PoolIDs         PoolID         `bson:"pool_ids,omitempty"`
+		PoolChannelID   string         `bson:"pool_channel_id,omitempty"`
+		PolicyIDs       PolicyIDs      `bson:"policy_ids,omitempty"`
+		EngageRole      string         `bson:"engage_role,omitempty"`
+		GuildID         string         `bson:"guild_id,omitempty"`
+		Custodians      []Custodian    `bson:"custodians,omitempty"`
+	}
+
 	PoolID   map[string]bool
-	PolicyID map[string]bool
+	DelegatorRoles map[string]RoleBounds
 )
-
-type PolicyRoles map[string]RoleBounds
-type DelegatorRoles map[string]RoleBounds
-
-type RoleBounds struct {
-	Min Bound `bson:"min,omitempty"`
-	Max Bound `bson:"max,omitempty"`
-	Order int64 `bson:"order,omitempty"`
-}
 
 func (drb RoleBounds) IsValid() bool {
 	return drb.Max > drb.Min
@@ -92,15 +82,11 @@ func LoadConfig(guild_id string) Config {
 	}
 
 	if config.PolicyIDs == nil {
-		config.PolicyIDs = make(PolicyID)
+		config.PolicyIDs = make(PolicyIDs)
 	}
 
 	if config.DelegatorRoles == nil {
 		config.DelegatorRoles = make(DelegatorRoles)
-	}
-
-	if config.PolicyRoles == nil {
-		config.PolicyRoles = make(PolicyRoles)
 	}
 
 	return config

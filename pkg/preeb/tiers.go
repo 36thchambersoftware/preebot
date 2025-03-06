@@ -11,11 +11,13 @@ func GetDelegatorRolesByStake(controlledAmount int, roles DelegatorRoles) []stri
 	return rolesToAssign
 }
 
-func GetPolicyRoles(assetCount int, roles PolicyRoles) []string {
+func GetPolicyRoles(assetCount map[string]int, policyIDs PolicyIDs) []string {
 	var rolesToAssign []string
-	for role, bounds := range roles {
-		if assetCount > int(bounds.Min) && assetCount < int(bounds.Max) {
-			rolesToAssign = append(rolesToAssign, role)
+	for policyID, policy := range policyIDs {
+		for role, bounds := range policy.Roles {
+			if assetCount[policyID] > int(bounds.Min) && assetCount[policyID] < int(bounds.Max) {
+				rolesToAssign = append(rolesToAssign, role)
+			}
 		}
 	}
 

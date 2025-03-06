@@ -146,7 +146,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 		return nil, err
 	}
 	assetCount := blockfrost.CountUserAssetsByPolicy(ctx, config.PolicyIDs, allAddresses)
-	policyRoleIDs := preeb.GetPolicyRoles(assetCount, config.PolicyRoles)
+	policyRoleIDs := preeb.GetPolicyRoles(assetCount, config.PolicyIDs)
 	sort.Strings(policyRoleIDs)
 
 	allQualifiedRoles := append(delegatorRoleIDs, policyRoleIDs...)
@@ -180,15 +180,17 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 		}
 
 		// if it's a policy role ...
-		if _, ok := config.PolicyRoles[currentRoleID]; ok {
-			currentRoles = append(currentRoles, currentRoleID)
-			// Check if the user should have this role ...
-			if (!slices.Contains(rolesToAdd, currentRoleID)) {
-				// and remove it if not
-				err := S.GuildMemberRoleRemove(guildID, user.ID, currentRoleID)
-				if err != nil {
-					slog.Error("could not remove role", "role", currentRoleID, "error", err)
-					continue
+		for _, policy := range config.PolicyIDs {
+			if _, ok := policy.Roles[currentRoleID]; ok {
+				currentRoles = append(currentRoles, currentRoleID)
+				// Check if the user should have this role ...
+				if (!slices.Contains(rolesToAdd, currentRoleID)) {
+					// and remove it if not
+					err := S.GuildMemberRoleRemove(guildID, user.ID, currentRoleID)
+					if err != nil {
+						slog.Error("could not remove role", "role", currentRoleID, "error", err)
+						continue
+					}
 				}
 			}
 		}

@@ -18,6 +18,7 @@ var LIST_POLICY_ROLES_COMMAND = discordgo.ApplicationCommand{
 
 var LIST_POLICY_ROLES_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	config := preeb.LoadConfig(i.GuildID)
+	p := message.NewPrinter(language.English)
 
 	var policy_roles []struct{
 		roleID string
@@ -27,27 +28,29 @@ var LIST_POLICY_ROLES_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 	}
 
 	sentence := "## Policy Roles\n"
-	for role, bounds := range config.PolicyRoles {
-		policy_roles = append(policy_roles, struct {
-			roleID string
-			min    int64
-			max    int64
-			order  int64
-		}{
-			roleID: role,
-			min:    int64(bounds.Min),
-			max:    int64(bounds.Max),
-			order:  bounds.Order,
+	for policyID, policy := range config.PolicyIDs {
+		for role, bounds := range policy.Roles {
+			policy_roles = append(policy_roles, struct {
+				roleID string
+				min    int64
+				max    int64
+				order  int64
+			}{
+				roleID: role,
+				min:    int64(bounds.Min),
+				max:    int64(bounds.Max),
+				order:  bounds.Order,
+			})
+		}
+
+		sort.Slice(policy_roles, func(i, j int) bool {
+			return (policy_roles[i].order < policy_roles[j].order)
 		})
-	}
 
-	sort.Slice(policy_roles, func(i, j int) bool {
-		return (policy_roles[i].order < policy_roles[j].order)
-	})
-
-	for _, setting := range policy_roles {
-		p := message.NewPrinter(language.English)
-		sentence = sentence + p.Sprintf(" <@&%s>\t %v - %v \n", setting.roleID, setting.min, setting.max)
+		sentence = sentence + p.Sprintf("**%s**\n", policyID)
+		for _, setting := range policy_roles {
+			sentence = sentence + p.Sprintf(" <@&%s>\t %v - %v \n", setting.roleID, setting.min, setting.max)
+		}
 	}
 
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

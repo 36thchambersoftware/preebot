@@ -159,14 +159,15 @@ func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]bfg.Addr
 	return allAddresses, nil
 }
 
-func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyID, allAddresses []bfg.AddressExtended) int {
-	totalNfts := 0
+func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, allAddresses []bfg.AddressExtended) map[string]int {
+	var policyCounts = make(map[string]int)
 
 	powInt := func (decimals int) float64 {
 		return math.Pow(10, float64(decimals))
 	}
 
 	for _, address := range allAddresses {
+		total := 0
 		for _, utxo := range address.Amount {
 			for policyID := range policyIDs {
 				if strings.HasPrefix(utxo.Unit, policyID) {
@@ -179,13 +180,14 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyID, allA
 						qty = int(math.Floor(float64(qty) / powInt(*utxo.Decimals)))
 					}
 
-					totalNfts+= qty
+					total+= qty
+					policyCounts[policyID] += total
 				}
 			}
 		}
 	}
 
-	return totalNfts
+	return policyCounts
 
 	// {
 	// 	"asset": "78dea0d35c9ac1f554066ab4491b0862c2482bdf617e0ba81414d51c000de140546972656c657373576f726b657230313033",
