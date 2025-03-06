@@ -26,11 +26,19 @@ var CONFIGURE_POOL_ID_COMMAND = discordgo.ApplicationCommand{
 		Description: "The pool ID to link to your discord (i.e. pool19peeq2czwunkwe3s70yuvwpsrqcyndlqnxvt67usz98px57z7fk)",
 		Required:    true,
 		MaxLength:   255,
+	},{
+		Type:        discordgo.ApplicationCommandOptionChannel,
+		Name:        "channel",
+		Description: "The channel you want block updates to be sent to (i.e. general chat or bot commands)",
+		Required:    true,
+		MaxLength:   255,
+		ChannelTypes: []discordgo.ChannelType{discordgo.ChannelTypeGuildText},
 	}},
 }
 
 var CONFIGURE_POOL_ID_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := GetOptions(i)
+	channelID := options["channel"].ChannelValue(nil).ID
 	poolID := options["poolid"].StringValue()
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -54,18 +62,20 @@ var CONFIGURE_POOL_ID_HANDLER = func(s *discordgo.Session, i *discordgo.Interact
 	}
 
 	var b bytes.Buffer
-	sentence := "POOL: {{ .name }} [{{ .ticker }}]\nDESCRIPTION: {{ .desc }}\nPOOL ID: {{ .id }}\n"
+	sentence := "POOL: {{ .name }} [{{ .ticker }}]\nDESCRIPTION: {{ .desc }}\nPOOL ID: {{ .id }}\nCHANNEL: {{ .channel }}\n"
 	partial := template.Must(template.New("configure-pool-id-template").Parse(sentence))
 	partial.Execute(&b, map[string]interface{}{
 		"name":   m.Name,
 		"ticker": m.Ticker,
 		"desc":   m.Description,
 		"id":     m.PoolID,
+		"channel": channelID,
 	})
 
 	content := b.String()
 
 	config := preeb.LoadConfig(i.GuildID)
+	config.PoolChannelID = channelID
 	config.PoolIDs[poolID] = true
 	config.Save()
 

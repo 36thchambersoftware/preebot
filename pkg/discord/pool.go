@@ -58,7 +58,7 @@ func AutomaticPoolBlocks(ctx context.Context, lastBlock string) (string) {
 			}
 
 			// TODO create configure channel for pool info
-			_, err := S.ChannelMessageSendEmbed("992429789774360617", &embed)
+			_, err := S.ChannelMessageSendEmbed(config.PoolChannelID, &embed)
 			if err != nil {
 				logger.Record.Error("could not send message embed", "ERROR", err)
 			}

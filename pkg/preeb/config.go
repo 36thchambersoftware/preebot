@@ -16,6 +16,7 @@ type Config struct {
 	PolicyRoles    PolicyRoles    `bson:"policy_roles,omitempty"`
 	DelegatorRoles DelegatorRoles `bson:"delegator_roles,omitempty"`
 	PoolIDs        PoolID         `bson:"pool_ids,omitempty"`
+	PoolChannelID  string         `bson:"pool_channel_id,omitempty"`
 	PolicyIDs      PolicyID       `bson:"policy_ids,omitempty"`
 	EngageRole     string         `bson:"engage_role,omitempty"`
 	GuildID        string         `bson:"guild_id,omitempty"`
