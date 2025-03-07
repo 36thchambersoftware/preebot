@@ -39,6 +39,7 @@ func initDiscord() {
 	ctx := context.Background()
 	go automaticRoleChecker(ctx)
 	go automaticPoolBlocks(ctx)
+	go automaticLaunchBuyNotifier(ctx)
 }
 
 func RefreshCommands() {
@@ -91,7 +92,19 @@ func automaticPoolBlocks(ctx context.Context) {
 			slog.Info("Getting Pool Info")
 			lastBlock = AutomaticPoolBlocks(ctx, lastBlock)
 		case <-ctx.Done():
-			RefreshCommands()
+			return
+		}
+	}
+}
+
+func automaticLaunchBuyNotifier(ctx context.Context) {
+	var lastHash string
+	for {
+		select {
+		case <-time.After(time.Minute):
+			slog.Info("Getting Buy Info")
+			lastHash = AutomaticLaunchBuyNotifier(ctx, lastHash)
+		case <-ctx.Done():
 			return
 		}
 	}

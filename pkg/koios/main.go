@@ -72,3 +72,24 @@ func Tip(ctx context.Context) (res *koios.Tip, err error) {
 
 	return &result.Data, nil
 }
+
+func GetPolicyTxs(ctx context.Context, policyID string) ([]koios.AddressTx, error) {
+	var options *koios.RequestOptions
+	policies := []koios.Asset{{PolicyID: koios.PolicyID(policyID)}}
+	policy, err := client.GetAssetInfo(ctx, policies, options)
+	if err != nil {
+		return nil, err
+	}
+
+	txs, err := client.GetAssetTxs(ctx, policy.Data[0].PolicyID, policy.Data[0].AssetName, 0, false, options)
+	if err != nil {
+		return nil, err
+	}
+
+	return txs.Data, nil
+}
+
+// func GetTransactionDetails(ctx context.Context, txHash string) {
+// 	var options *koios.RequestOptions
+// 	client.GetTxInfo(ctx, txs []koios.TxHash, opts *koios.RequestOptions)
+// }

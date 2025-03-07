@@ -84,6 +84,27 @@ func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTX
 	return txDetails, nil
 }
 
+func GetAddressTransactions(ctx context.Context, address string) ([]bfg.AddressTransactions, error) {
+	APIQueryParams.Order = "desc"
+	txs, err := client.AddressTransactions(ctx, address, APIQueryParams)
+	if err != nil {
+		log.Printf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
+		return nil, err
+	}
+
+	return txs, nil
+}
+
+func GetTransaction(ctx context.Context, hash string) (bfg.TransactionUTXOs, error) {
+	tx, err := client.TransactionUTXOs(ctx, hash)
+	if err != nil {
+		log.Printf("Could not get txs for address: \nHASH: %v \nERROR: %v", hash, err)
+		return bfg.TransactionUTXOs{}, err
+	}
+
+	return tx, nil
+}
+
 func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
 	stakeDetails, err := client.Address(ctx, address)
 	if err != nil {
