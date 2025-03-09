@@ -39,7 +39,7 @@ func initDiscord() {
 	ctx := context.Background()
 	go automaticRoleChecker(ctx)
 	go automaticPoolBlocks(ctx)
-	go automaticLaunchBuyNotifier(ctx)
+	// go automaticLaunchBuyNotifier(ctx)
 }
 
 func RefreshCommands() {
