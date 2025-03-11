@@ -52,7 +52,7 @@ func AutomaticBuyNotifier(ctx context.Context) {
 
 							var image *url.URL
 							for _, n := range policy.BuyNotifications {
-								if trade.TokenBAmount > float64(n.Min) && trade.TokenBAmount < float64(n.Max) {
+								if trade.TokenAAmount > float64(n.Min) && trade.TokenAAmount < float64(n.Max) {
 									image, err = url.Parse(n.Image)
 									if err != nil {
 										logger.Record.Error("could not parse image url", "ERROR", err)
