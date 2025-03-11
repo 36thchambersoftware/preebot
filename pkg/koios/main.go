@@ -73,15 +73,9 @@ func Tip(ctx context.Context) (res *koios.Tip, err error) {
 	return &result.Data, nil
 }
 
-func GetPolicyTxs(ctx context.Context, policyID string) ([]koios.AddressTx, error) {
+func GetPolicyTxs(ctx context.Context, policyID, assetName string) ([]koios.AddressTx, error) {
 	var options *koios.RequestOptions
-	policies := []koios.Asset{{PolicyID: koios.PolicyID(policyID)}}
-	policy, err := client.GetAssetInfo(ctx, policies, options)
-	if err != nil {
-		return nil, err
-	}
-
-	txs, err := client.GetAssetTxs(ctx, policy.Data[0].PolicyID, policy.Data[0].AssetName, 0, false, options)
+	txs, err := client.GetAssetTxs(ctx, koios.PolicyID(policyID), koios.AssetName(assetName), 0, false, options)
 	if err != nil {
 		return nil, err
 	}

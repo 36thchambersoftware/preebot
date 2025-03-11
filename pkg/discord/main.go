@@ -16,6 +16,7 @@ var (
 	S                   *discordgo.Session
 	DISCORD_WEBHOOK_URL string
 	CUSTODIAN_ADDRESSES map[string]string
+	LAST_UPDATE_TIME    map[string]time.Time
 )
 
 func init() {
@@ -39,6 +40,7 @@ func initDiscord() {
 	ctx := context.Background()
 	go automaticRoleChecker(ctx)
 	go automaticPoolBlocks(ctx)
+	go automaticBuyNotifier(ctx)
 	// go automaticLaunchBuyNotifier(ctx)
 }
 
@@ -97,18 +99,31 @@ func automaticPoolBlocks(ctx context.Context) {
 	}
 }
 
-func automaticLaunchBuyNotifier(ctx context.Context) {
-	var lastHash string
+func automaticBuyNotifier(ctx context.Context) {
+	LAST_UPDATE_TIME = make(map[string]time.Time)
 	for {
 		select {
 		case <-time.After(time.Minute):
 			slog.Info("Getting Buy Info")
-			lastHash = AutomaticLaunchBuyNotifier(ctx, lastHash)
+			AutomaticBuyNotifier(ctx)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
+
+// func automaticLaunchBuyNotifier(ctx context.Context) {
+// 	var lastHash string
+// 	for {
+// 		select {
+// 		case <-time.After(time.Minute):
+// 			slog.Info("Getting Buy Info")
+// 			lastHash = AutomaticLaunchBuyNotifier(ctx, lastHash)
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 	}
+// }
 
 func initWebhook() {
 	// DISCORD_WEBHOOK_URL
