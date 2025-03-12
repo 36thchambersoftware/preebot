@@ -27,7 +27,7 @@ var CONFIGURE_POLICY_ID_COMMAND = discordgo.ApplicationCommand{
 	},{
 		Type:        discordgo.ApplicationCommandOptionChannel,
 		Name:        "channel",
-		Description: "The channel you want buy updates to be sent to (i.e. general chat or bot commands)",
+		Description: "The default channel you want buy updates to be sent to (i.e. general chat or bot commands)",
 		Required:    true,
 		MaxLength:   255,
 		ChannelTypes: []discordgo.ChannelType{discordgo.ChannelTypeGuildText},
@@ -36,8 +36,8 @@ var CONFIGURE_POLICY_ID_COMMAND = discordgo.ApplicationCommand{
 
 var CONFIGURE_POLICY_ID_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := GetOptions(i)
-	channelID := options["channel"].ChannelValue(nil).ID
-	channel, err := s.Channel(channelID)
+	defaultChannelID := options["channel"].ChannelValue(nil).ID
+	channel, err := s.Channel(defaultChannelID)
 	policyID := options["policyid"].StringValue()
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -78,7 +78,7 @@ var CONFIGURE_POLICY_ID_HANDLER = func(s *discordgo.Session, i *discordgo.Intera
 
 	config := preeb.LoadConfig(i.GuildID)
 	policy := config.PolicyIDs[policyID]
-	policy.ChannelID = channel.ID
+	policy.DefaultChannelID = channel.ID
 	config.PolicyIDs[policyID] = policy
 	config.Save()
 

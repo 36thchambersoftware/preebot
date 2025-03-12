@@ -3,9 +3,10 @@ package preeb
 type (
 	Policy struct {
 		Roles PolicyRoles
-		ChannelID string `bson:"channel_id,omitempty"`
+		DefaultChannelID string `bson:"default_channel_id,omitempty"`
 		BuyNotifications []BuyNotification `bson:"buy_notifications,omitempty"`
 		HexName string `bson:"hex_name,omitempty"`
+		Notify bool `bson:"notify,omitempty"`
 	}
 
 	// String here being the policy id
@@ -24,5 +25,8 @@ type (
 		Min Bound `bson:"min,omitempty"`
 		Max Bound `bson:"max,omitempty"`
 		Image string `bson:"image,omitempty"`
+		Message string `bson:"message,omitempty"`
+		ChannelID string `bson:"channel_id,omitempty"`
+		Label string `bson:"label,omitempty"`
 	}
 )

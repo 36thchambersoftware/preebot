@@ -7,7 +7,6 @@ import (
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 	"preebot/pkg/taptools"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -17,7 +16,7 @@ func AutomaticBuyNotifier(ctx context.Context) {
 	logger.Record.Info("getting configs")
 	for _, config := range configs {
 		for policyID, policy := range config.PolicyIDs {
-			if policy.ChannelID != "" {
+			if policy.Notify {
 				logger.Record.Info("getting trades")
 				trades, err := taptools.GetTrades(ctx, policyID + policy.HexName)
 				if err != nil {
@@ -29,21 +28,18 @@ func AutomaticBuyNotifier(ctx context.Context) {
 				var buys taptools.Trades
 				for _, trade := range trades {
 					if (trade.Action == "buy") {
-						logger.Record.Info("buy found", "BUY", trade)
 						buys = append(buys, trade)
-						logger.Record.Info("last update", "TIME", LAST_UPDATE_TIME[policyID])
-						if LAST_UPDATE_TIME[policyID].IsZero() {
-							LAST_UPDATE_TIME[policyID] = time.Unix(int64(trade.Time), 0)
+						if LAST_UPDATE_TIME[policyID] == 0 {
+							LAST_UPDATE_TIME[policyID] = trade.Time
 							logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE TIME", LAST_UPDATE_TIME[policyID])
 						}
 
-						tradeTime := time.Unix(int64(trade.Time), 0)
-						logger.Record.Info("time", "NEW", tradeTime.After(LAST_UPDATE_TIME[policyID]))
-						if (tradeTime.After(LAST_UPDATE_TIME[policyID])) {
+						logger.Record.Info("time", "NEW", trade.Time > LAST_UPDATE_TIME[policyID])
+						if (trade.Time > LAST_UPDATE_TIME[policyID]) {
 							logger.Record.Info("building embed")
 							embedField := discordgo.MessageEmbedField{
 								Name:   fmt.Sprintf("Amount: %.0f %s / %.0f %s", trade.TokenAAmount, trade.TokenAName, trade.TokenBAmount, trade.TokenBName),
-								Value: fmt.Sprintf("Buyer: %s\n\nTxHash: %s", trade.Address, trade.Hash),
+								Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", trade.Hash),
 								Inline: false,
 							}
 
@@ -51,8 +47,17 @@ func AutomaticBuyNotifier(ctx context.Context) {
 							embedFields = append(embedFields, &embedField)
 
 							var image *url.URL
+							var message string
+							var label string
+							channel_id := policy.DefaultChannelID
+							logger.Record.Info("buy matched to tier", "BUY NOTIS", policy.BuyNotifications)
 							for _, n := range policy.BuyNotifications {
+								logger.Record.Info("tier check", "min", n.Min, "max", n.Max, "amount", trade.TokenAAmount)
 								if trade.TokenAAmount > float64(n.Min) && trade.TokenAAmount < float64(n.Max) {
+									logger.Record.Info("buy matched to tier", "NOTIFICATION", n)
+									channel_id = n.ChannelID
+									message = n.Message
+									label = n.Label
 									image, err = url.Parse(n.Image)
 									if err != nil {
 										logger.Record.Error("could not parse image url", "ERROR", err)
@@ -61,15 +66,20 @@ func AutomaticBuyNotifier(ctx context.Context) {
 							}
 
 							embed := discordgo.MessageEmbed{
-								Title: fmt.Sprintf("New $%s Buy!", trade.TokenAName),
-								Color: 0xd269ff,
+								Title:       fmt.Sprintf("New %s $%s Buy!", label, trade.TokenAName),
+								Description: message,
+								Color: 		 0xd269ff,
 								Footer:      &discordgo.MessageEmbedFooter{Text: "PREEB thanks you for delegating!"},
-								Image:   	 &discordgo.MessageEmbedImage{URL: image.String()},
 								Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
 								Fields:      embedFields,
 							}
 
-							_, err = S.ChannelMessageSendEmbed(policy.ChannelID, &embed)
+							if image.String() != "" {
+								logger.Record.Info("image", "URL", image.String())
+								embed.Image = &discordgo.MessageEmbedImage{URL: image.String()}
+							}
+
+							_, err = S.ChannelMessageSendEmbed(channel_id, &embed)
 							if err != nil {
 								logger.Record.Error("could not send message embed", "ERROR", err)
 							}
@@ -80,7 +90,7 @@ func AutomaticBuyNotifier(ctx context.Context) {
 				}
 
 				if buys != nil {
-					LAST_UPDATE_TIME[policyID] = time.Unix(int64(buys[0].Time), 0)
+					LAST_UPDATE_TIME[policyID] = buys[0].Time
 					logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE HASH", LAST_UPDATE_TIME)
 				}
 			}

@@ -16,7 +16,7 @@ var (
 	S                   *discordgo.Session
 	DISCORD_WEBHOOK_URL string
 	CUSTODIAN_ADDRESSES map[string]string
-	LAST_UPDATE_TIME    map[string]time.Time
+	LAST_UPDATE_TIME    map[string]int
 )
 
 func init() {
@@ -100,7 +100,7 @@ func automaticPoolBlocks(ctx context.Context) {
 }
 
 func automaticBuyNotifier(ctx context.Context) {
-	LAST_UPDATE_TIME = make(map[string]time.Time)
+	LAST_UPDATE_TIME = make(map[string]int)
 	for {
 		select {
 		case <-time.After(time.Minute):
