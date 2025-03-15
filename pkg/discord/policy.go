@@ -9,6 +9,8 @@ import (
 	"preebot/pkg/taptools"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 func AutomaticBuyNotifier(ctx context.Context) {
@@ -37,8 +39,9 @@ func AutomaticBuyNotifier(ctx context.Context) {
 						logger.Record.Info("time", "NEW", trade.Time > LAST_UPDATE_TIME[policyID])
 						if (trade.Time > LAST_UPDATE_TIME[policyID]) {
 							logger.Record.Info("building embed")
+							p := message.NewPrinter(language.English)
 							embedField := discordgo.MessageEmbedField{
-								Name:   fmt.Sprintf("Amount: %.0f %s / %.0f %s", trade.TokenAAmount, trade.TokenAName, trade.TokenBAmount, trade.TokenBName),
+								Name:   p.Sprintf("Amount: %.0f %s / %.0f %s", trade.TokenAAmount, trade.TokenAName, trade.TokenBAmount, trade.TokenBName),
 								Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", trade.Hash),
 								Inline: false,
 							}
