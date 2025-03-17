@@ -52,13 +52,13 @@ func AutomaticBuyNotifier(ctx context.Context) {
 							var image *url.URL
 							var message string
 							var label string
-							channel_id := policy.DefaultChannelID
+							alt_channel_id := policy.DefaultChannelID
 							logger.Record.Info("buy matched to tier", "BUY NOTIS", policy.BuyNotifications)
 							for _, n := range policy.BuyNotifications {
 								logger.Record.Info("tier check", "min", n.Min, "max", n.Max, "amount", trade.TokenAAmount)
 								if trade.TokenAAmount > float64(n.Min) && trade.TokenAAmount < float64(n.Max) {
 									logger.Record.Info("buy matched to tier", "NOTIFICATION", n)
-									channel_id = n.ChannelID
+									alt_channel_id = n.ChannelID
 									message = n.Message
 									label = n.Label
 									image, err = url.Parse(n.Image)
@@ -82,12 +82,17 @@ func AutomaticBuyNotifier(ctx context.Context) {
 								embed.Image = &discordgo.MessageEmbedImage{URL: image.String()}
 							}
 
-							_, err = S.ChannelMessageSendEmbed(channel_id, &embed)
+							_, err = S.ChannelMessageSendEmbed(policy.DefaultChannelID, &embed)
 							if err != nil {
 								logger.Record.Error("could not send message embed", "ERROR", err)
 							}
 
-							
+							if alt_channel_id != policy.DefaultChannelID {
+								_, err = S.ChannelMessageSendEmbed(alt_channel_id, &embed)
+								if err != nil {
+									logger.Record.Error("could not send message embed", "ERROR", err)
+								}
+							}
 						}
 					}
 				}
