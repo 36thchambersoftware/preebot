@@ -7,6 +7,7 @@ import (
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 	"preebot/pkg/taptools"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -39,6 +40,7 @@ func AutomaticNFTBuyNotifier(ctx context.Context) {
 						continue
 					}
 
+					buys = append(buys, trade)
 					logger.Record.Info("time", "NEW", trade.Time > LAST_UPDATE_TIME[policyID])
 					if (trade.Time > LAST_UPDATE_TIME[policyID]) {
 						logger.Record.Info("building embed")
@@ -76,15 +78,14 @@ func AutomaticNFTBuyNotifier(ctx context.Context) {
 
 						// Trade urls: "ipfs://QmboJKkYbfyPrrD7pnvgRUjd4VXPo6kTfv2W7oVF4q3F52"
 						// Converted urls: https://ipfs.io/ipfs/QmboJKkYbfyPrrD7pnvgRUjd4VXPo6kTfv2W7oVF4q3F52
-
+						image := strings.Replace(trade.Image, "///", "//", 1)
 						tokenURI, err := url.Parse(trade.Image)
-						image := trade.Image
 						if err == nil {
 							tokenURI.Scheme = "https"
 							tokenURI.Path = fmt.Sprintf("ipfs/%s", tokenURI.Host)
 							tokenURI.Host = "ipfs.io"
 							image = tokenURI.String()
-							// logger.Record.Info("ipfs conversion", "url", image)
+							logger.Record.Info("ipfs conversion", "url", image)
 						} else {
 							logger.Record.Info("could not convert ipfs to standard", "ERROR", err)
 						}
