@@ -82,7 +82,7 @@ func AutomaticNFTBuyNotifier(ctx context.Context) {
 						tokenURI, err := url.Parse(trade.Image)
 						if err == nil {
 							tokenURI.Scheme = "https"
-							tokenURI.Path = fmt.Sprintf("ipfs/%s", tokenURI.Host)
+							tokenURI.Path = fmt.Sprintf("ipfs/%s%s", tokenURI.Host, tokenURI.Path)
 							tokenURI.Host = "ipfs.io"
 							image = tokenURI.String()
 							logger.Record.Info("ipfs conversion", "url", image)
