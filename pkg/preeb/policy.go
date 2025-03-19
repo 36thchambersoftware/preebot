@@ -5,8 +5,9 @@ type (
 		Roles PolicyRoles
 		DefaultChannelID string `bson:"default_channel_id,omitempty"`
 		BuyNotifications []BuyNotification `bson:"buy_notifications,omitempty"`
-		HexName string `bson:"hex_name,omitempty"`
+		HexName string `bson:"hex_name,omitempty"` // Tokens only
 		Notify bool `bson:"notify,omitempty"`
+		NFT bool `bson:"nft,omitempty"`
 	}
 
 	// String here being the policy id
@@ -24,7 +25,7 @@ type (
 	BuyNotification struct {
 		Min Bound `bson:"min,omitempty"`
 		Max Bound `bson:"max,omitempty"`
-		Image string `bson:"image,omitempty"`
+		Image string `bson:"image,omitempty"` // Tokens only
 		Message string `bson:"message,omitempty"`
 		ChannelID string `bson:"channel_id,omitempty"`
 		Label string `bson:"label,omitempty"`

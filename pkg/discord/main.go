@@ -38,9 +38,12 @@ func initDiscord() {
 	RefreshCommands()
 
 	ctx := context.Background()
+	LAST_UPDATE_TIME = make(map[string]int)
+
 	go automaticRoleChecker(ctx)
 	go automaticPoolBlocks(ctx)
 	go automaticBuyNotifier(ctx)
+	go automaticNftBuyNotifier(ctx)
 	// go automaticLaunchBuyNotifier(ctx)
 }
 
@@ -100,12 +103,23 @@ func automaticPoolBlocks(ctx context.Context) {
 }
 
 func automaticBuyNotifier(ctx context.Context) {
-	LAST_UPDATE_TIME = make(map[string]int)
 	for {
 		select {
 		case <-time.After(time.Minute):
 			slog.Info("Getting Buy Info")
 			AutomaticBuyNotifier(ctx)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func automaticNftBuyNotifier(ctx context.Context) {
+	for {
+		select {
+		case <-time.After(time.Minute):
+			slog.Info("Getting NFT Buy Info")
+			AutomaticNFTBuyNotifier(ctx)
 		case <-ctx.Done():
 			return
 		}

@@ -14,8 +14,8 @@ import (
 )
 
 type (
-	Trades []Trade
-	Trade struct {
+	TokenTrades []TokenTrade
+	TokenTrade struct {
 		Action       string `json:"action,omitempty"`
 		Address      string `json:"address,omitempty"`
 		Exchange     string `json:"exchange,omitempty"`
@@ -30,15 +30,32 @@ type (
 		TokenBAmount float64`json:"tokenBAmount,omitempty"`
 		TokenBName   string `json:"tokenBName,omitempty"`
 	}
+
+	NftTrades []NftTrade
+	NftTrade struct {
+		BuyerAddress   string `json:"buyerAddress,omitempty"`
+		CollectionName string `json:"collectionName,omitempty"`
+		Hash           string `json:"hash,omitempty"`
+		Image          string `json:"image,omitempty"`
+		Market         string `json:"market,omitempty"`
+		Name           string `json:"name,omitempty"`
+		Policy         string `json:"policy,omitempty"`
+		Price          int    `json:"price,omitempty"`
+		SellerAddress  string `json:"sellerAddress,omitempty"`
+		Time           int    `json:"time,omitempty"`
+	}
 )
 
 var (
 	TAPTOOLS_API_BASE_URL = "https://openapi.taptools.io/api/v1/"
 	TAPTOOLS_API_KEY string
+	client *http.Client
 )
 
 func init() {
 	TAPTOOLS_API_KEY = loadTaptoolsAPIKey()
+
+	client = &http.Client{}
 }
 
 func loadTaptoolsAPIKey() string {
@@ -50,7 +67,7 @@ func loadTaptoolsAPIKey() string {
 	return TAPTOOLS_API_KEY
 }
 
-func GetTrades(ctx context.Context, policyAsset string) (Trades, error) {
+func GetTokenTrades(ctx context.Context, policyAsset string) (TokenTrades, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 	data := strings.NewReader(fmt.Sprintf(`{"unit": "%s"}`, policyAsset))
@@ -65,7 +82,7 @@ func GetTrades(ctx context.Context, policyAsset string) (Trades, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", TAPTOOLS_API_KEY)
-	client := &http.Client{}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Record.Error("invalid response from taptools api", "ERROR", err)
@@ -73,7 +90,38 @@ func GetTrades(ctx context.Context, policyAsset string) (Trades, error) {
     defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 
-	var trades Trades
+	var trades TokenTrades
+	if err := json.Unmarshal(body, &trades); err != nil {
+        logger.Record.Error("could not unmarshal response", "BODY", string(body), "ERROR", err)
+    }
+	
+	return trades, nil
+}
+
+func GetNFTTrades(ctx context.Context) (NftTrades, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	data := strings.NewReader(fmt.Sprintf(`{"unit": ""}`))
+	url, err := url.Parse(fmt.Sprintf("%snft/collection/trades?sortBy=time&minAmount=1&order=desc", TAPTOOLS_API_BASE_URL))
+	if err != nil {
+		return nil, err
+	}
+	logger.Record.Info("get trades", "URL", url.String())
+	req, err := http.NewRequest(http.MethodGet, url.String(), data)
+	if err != nil {
+		logger.Record.Error("Could not connect to taptools api", "ERROR", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", TAPTOOLS_API_KEY)
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		logger.Record.Error("invalid response from taptools api", "ERROR", err)
+	}
+    defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var trades NftTrades
 	if err := json.Unmarshal(body, &trades); err != nil {
         logger.Record.Error("could not unmarshal response", "BODY", string(body), "ERROR", err)
     }

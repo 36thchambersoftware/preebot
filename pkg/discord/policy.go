@@ -18,16 +18,16 @@ func AutomaticBuyNotifier(ctx context.Context) {
 	logger.Record.Info("getting configs")
 	for _, config := range configs {
 		for policyID, policy := range config.PolicyIDs {
-			if policy.Notify {
-				logger.Record.Info("getting trades")
-				trades, err := taptools.GetTrades(ctx, policyID + policy.HexName)
+			if !policy.NFT && policy.Notify {
+				logger.Record.Info("getting token trades")
+				trades, err := taptools.GetTokenTrades(ctx, policyID + policy.HexName)
 				if err != nil {
 					logger.Record.Warn("Could not get trades", "policyID", policyID, "ERROR", err)
 					continue
 				}
 
 				logger.Record.Info("getting buys")
-				var buys taptools.Trades
+				var buys taptools.TokenTrades
 				for _, trade := range trades {
 					if (trade.Action == "buy") {
 						buys = append(buys, trade)
