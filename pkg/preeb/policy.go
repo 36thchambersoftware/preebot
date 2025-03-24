@@ -8,6 +8,9 @@ type (
 		HexName string `bson:"hex_name,omitempty"` // Tokens only
 		Notify bool `bson:"notify,omitempty"`
 		NFT bool `bson:"nft,omitempty"`
+		PriceUpdate bool `bson:"price_update,omitempty"`
+		Price float64 `bson:"price,omitempty"`
+		PriceChannel string `bson:"price_channel,omitempty"`
 	}
 
 	// String here being the policy id

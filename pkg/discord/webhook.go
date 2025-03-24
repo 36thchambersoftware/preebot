@@ -1,11 +1,13 @@
 package discord
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"golang.org/x/exp/slog"
 )
 
@@ -15,10 +17,15 @@ func Webhook() {
 	}
 
 	// TODO replace with webhook params struct
-	data := strings.NewReader("")
+	data := discordgo.WebhookParams{Content: "cow tipping!", Username: "notabot"}
+	params, err := json.Marshal(data)
+	if err != nil {
+		slog.Error("PREEBOT", "PACKAGE", "DISCORD", "ERROR", err)
+	}
+	// data := strings.NewReader("{username: 'Bob',content: 'Hi Dylan',}")
 
 	// Create a new request
-	request, err := http.NewRequest(http.MethodPost, DISCORD_WEBHOOK_URL, data)
+	request, err := http.NewRequest(http.MethodPost, DISCORD_WEBHOOK_URL, bytes.NewBuffer(params))
 	if err != nil {
 		slog.Error("PREEBOT", "PACKAGE", "DISCORD", "request", err)
 		return
