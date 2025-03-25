@@ -51,6 +51,13 @@ func AutomaticBuyNotifier(ctx context.Context) {
 						if (trade.Time > LAST_UPDATE_TIME[policyID]) {
 							logger.Record.Info("building embed")
 							p := message.NewPrinter(language.English)
+
+
+							compareToken := trade.TokenAAmount
+							if policy.CompareADA {
+								compareToken = trade.TokenBAmount
+							}
+							
 							embedField := discordgo.MessageEmbedField{
 								Name:   p.Sprintf("Amount: %.0f %s / %.0f %s", trade.TokenAAmount, trade.TokenAName, trade.TokenBAmount, trade.TokenBName),
 								Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", trade.Hash),
@@ -67,7 +74,7 @@ func AutomaticBuyNotifier(ctx context.Context) {
 							logger.Record.Info("buy matched to tier", "BUY NOTIS", policy.BuyNotifications)
 							for _, n := range policy.BuyNotifications {
 								logger.Record.Info("tier check", "min", n.Min, "max", n.Max, "amount", trade.TokenAAmount)
-								if trade.TokenAAmount > float64(n.Min) && trade.TokenAAmount < float64(n.Max) {
+								if compareToken > float64(n.Min) && compareToken < float64(n.Max) {
 									logger.Record.Info("buy matched to tier", "NOTIFICATION", n)
 									alt_channel_id = n.ChannelID
 									message = n.Message

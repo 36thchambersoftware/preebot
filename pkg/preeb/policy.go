@@ -11,6 +11,7 @@ type (
 		PriceUpdate bool `bson:"price_update,omitempty"`
 		Price float64 `bson:"price,omitempty"`
 		PriceChannel string `bson:"price_channel,omitempty"`
+		CompareADA bool `bson:"in_ada,omitempty"`
 	}
 
 	// String here being the policy id
