@@ -83,6 +83,53 @@ func GetPolicyTxs(ctx context.Context, policyID, assetName string) ([]koios.Addr
 	return txs.Data, nil
 }
 
+func GetPolicyAssetMints(ctx context.Context, policyID string) ([]koios.PolicyAssetMint, error) {
+	var options *koios.RequestOptions
+	mints, err := client.GetPolicyAssetMints(ctx, koios.PolicyID(policyID), options)
+	if err != nil {
+		return nil, err
+	}
+
+	if mints.StatusCode != 200 {
+		return nil, errors.New(mints.Response.Error.Message)
+	}
+
+	return mints.Data, nil
+}
+
+func GetAssetUTXOs(ctx context.Context, policyID, assetName string) (koios.UTxO, error) {
+	var options *koios.RequestOptions
+
+	asset := []koios.Asset{{
+		PolicyID: koios.PolicyID(policyID),
+		AssetName: koios.AssetName(assetName),
+	}}
+	utxos, err := client.GetAssetUTxOs(ctx, asset, options)
+	if err != nil {
+		return koios.UTxO{}, err
+	}
+
+	if utxos.StatusCode != 200 {
+		return koios.UTxO{}, errors.New(utxos.Response.Error.Message)
+	}
+
+	return utxos.Data[0], nil
+}
+
+func GetDatum(ctx context.Context, datumHash koios.DatumHash) (*koios.DatumInfo, error) {
+	var options *koios.RequestOptions
+	datum, err := client.GetDatumInfo(ctx, datumHash, options)
+	if err != nil {
+		return nil, err
+	}
+
+	if datum.StatusCode != 200 {
+		return nil, errors.New(datum.Response.Error.Message)
+	}
+
+	return datum.Data, nil
+}
+
 // func GetTransactionDetails(ctx context.Context, txHash string) {
 // 	var options *koios.RequestOptions
 // 	client.GetTxInfo(ctx, txs []koios.TxHash, opts *koios.RequestOptions)

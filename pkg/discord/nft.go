@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"preebot/pkg/cardano"
+	"preebot/pkg/koios"
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 	"preebot/pkg/taptools"
@@ -116,6 +118,112 @@ func AutomaticNFTBuyNotifier(ctx context.Context) {
 
 				if buys != nil {
 					LAST_UPDATE_TIME[policyID] = buys[0].Time
+					logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE HASH", LAST_UPDATE_TIME)
+				}
+			}
+		}
+	}
+}
+
+func AutomaticNFTMintNotifier(ctx context.Context) {
+	logger.Record.Info("getting nft mints")
+	
+	configs := preeb.LoadConfigs()
+	logger.Record.Info("getting configs")
+	for _, config := range configs {
+		for policyID, policy := range config.PolicyIDs {
+			if policy.NFT && policy.Notify {
+				logger.Record.Info("checking nft mints")
+				mints, err := koios.GetPolicyAssetMints(ctx, policyID)
+				if err != nil {
+					logger.Record.Warn("Could not get nft mints", "ERROR", err)
+					return
+				}
+
+				if _, ok := LAST_UPDATE_TIME[policyID]; !ok {
+					now := time.Now()
+					LAST_UPDATE_TIME[policyID] = int(now.Unix())
+					logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE TIME", LAST_UPDATE_TIME[policyID])
+				}
+
+				for _, mint := range mints {
+					logger.Record.Info("time", "NEW", int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID])
+					if (int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID]) {
+						utxo, err := koios.GetAssetUTXOs(ctx, policyID, string(mint.AssetName))
+						if err != nil {
+							logger.Record.Warn("Could not get asset utxos", "ERROR", err)
+							continue
+						}
+
+						datum, err := koios.GetDatum(ctx, utxo.DatumHash)
+						if err != nil {
+							logger.Record.Warn("Could not get datum", "ERROR", err)
+							continue
+						}
+
+						metadata, err := cardano.ParseDatumValueFixed(*datum.Value)
+						if err != nil {
+							panic(err)
+						}
+
+
+						logger.Record.Info("tier check", "meta", metadata)
+						image := metadata["image"]
+						tokenURI, err := url.Parse(image)
+						if err == nil {
+							tokenURI.Scheme = "https"
+							tokenURI.Path = fmt.Sprintf("ipfs/%s%s", tokenURI.Host, tokenURI.Path)
+							tokenURI.Host = "ipfs.blockfrost.dev"
+							image = tokenURI.String()
+							logger.Record.Info("ipfs conversion", "url", image)
+						} else {
+							logger.Record.Info("could not convert ipfs to standard", "ERROR", err)
+						}
+
+						logger.Record.Info("building embed")
+						p := message.NewPrinter(language.English)
+						var embedFields []*discordgo.MessageEmbedField
+
+						for _, v := range policy.MetadataKeys {
+							embedFields = append(embedFields, &discordgo.MessageEmbedField{
+								Name:   p.Sprintf("%s", strings.ToUpper(v)),
+								Value:  p.Sprintf("%s", metadata[v]),
+								Inline: false,
+							})
+						}
+						
+
+						embedFields = append(embedFields, &discordgo.MessageEmbedField{
+							Name:  "",
+							Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", mint.MintingTxHash),
+							Inline: false,
+						})
+
+						message := fmt.Sprintf("%s ", policy.Message)
+						alt_channel_id := policy.DefaultChannelID
+						embed := discordgo.MessageEmbed{
+							Title:       "New Collection Mint!",
+							Description: message,
+							Color: 		 0xd269ff,
+							Image:       &discordgo.MessageEmbedImage{URL: image},
+							Footer:      &discordgo.MessageEmbedFooter{Text: "PREEB thanks you for delegating!"},
+							Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
+							Fields:      embedFields,
+						}
+						_, err = S.ChannelMessageSendEmbed(policy.DefaultChannelID, &embed)
+						if err != nil {
+							logger.Record.Error("could not send message embed", "ERROR", err)
+						}
+						if alt_channel_id != policy.DefaultChannelID {
+							_, err = S.ChannelMessageSendEmbed(alt_channel_id, &embed)
+							if err != nil {
+								logger.Record.Error("could not send message embed", "ERROR", err)
+							}
+						}
+					}
+				}
+				if mints != nil {
+					LAST_UPDATE_TIME[policyID] = int(mints[0].CreationTime.Unix())
 					logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE HASH", LAST_UPDATE_TIME)
 				}
 			}

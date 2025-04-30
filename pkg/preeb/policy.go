@@ -12,6 +12,8 @@ type (
 		Price float64 `bson:"price,omitempty"`
 		PriceChannel string `bson:"price_channel,omitempty"`
 		CompareADA bool `bson:"in_ada,omitempty"`
+		MetadataKeys []string `bson:"metadata_keys,omitempty"`
+		Message string `bson:"message,omitempty"`
 	}
 
 	// String here being the policy id

@@ -44,6 +44,7 @@ func initDiscord() {
 	go automaticPoolBlocks(ctx)
 	go automaticBuyNotifier(ctx)
 	go automaticNftBuyNotifier(ctx)
+	go automaticNftMintNotifier(ctx)
 	// go automaticLaunchBuyNotifier(ctx)
 }
 
@@ -120,6 +121,18 @@ func automaticNftBuyNotifier(ctx context.Context) {
 		case <-time.After(time.Minute):
 			slog.Info("Getting NFT Buy Info")
 			AutomaticNFTBuyNotifier(ctx)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func automaticNftMintNotifier(ctx context.Context) {
+	for {
+		select {
+		case <-time.After(time.Minute):
+			slog.Info("Getting NFT Mint Info")
+			AutomaticNFTMintNotifier(ctx)
 		case <-ctx.Done():
 			return
 		}
