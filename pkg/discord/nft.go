@@ -132,7 +132,7 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 	logger.Record.Info("getting configs")
 	for _, config := range configs {
 		for policyID, policy := range config.PolicyIDs {
-			if policy.NFT && policy.Notify {
+			if policy.NFT && policy.Notify && policy.Mint {
 				logger.Record.Info("checking nft mints")
 				mints, err := koios.GetPolicyAssetMints(ctx, policyID)
 				if err != nil {
@@ -147,7 +147,6 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 				}
 
 				for _, mint := range mints {
-					logger.Record.Info("time", "NEW", int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID])
 					if (int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID]) {
 						logger.Record.Info("NEW MINT", "POLICY", policyID, "DATA", mint)
 						utxo, err := koios.GetAssetUTXOs(ctx, policyID, string(mint.AssetName))
