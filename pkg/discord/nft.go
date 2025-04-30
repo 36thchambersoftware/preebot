@@ -167,7 +167,6 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 							continue
 						}
 
-
 						logger.Record.Info("tier check", "meta", metadata)
 						image := metadata["image"]
 						tokenURI, err := url.Parse(image)

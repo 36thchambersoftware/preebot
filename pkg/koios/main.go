@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"preebot/pkg/preeb"
+	"sort"
 
 	"github.com/cardano-community/koios-go-client/v4"
 )
@@ -93,6 +94,10 @@ func GetPolicyAssetMints(ctx context.Context, policyID string) ([]koios.PolicyAs
 	if mints.StatusCode != 200 {
 		return nil, errors.New(mints.Response.Error.Message)
 	}
+
+	sort.Slice(mints.Data, func(i, j int) bool {
+		return mints.Data[i].CreationTime.After(mints.Data[j].CreationTime.Time)
+	})
 
 	return mints.Data, nil
 }
