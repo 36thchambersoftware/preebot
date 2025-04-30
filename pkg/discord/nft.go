@@ -149,6 +149,7 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 				for _, mint := range mints {
 					logger.Record.Info("time", "NEW", int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID])
 					if (int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID]) {
+						logger.Record.Info("NEW MINT", "POLICY", policyID, "DATA", mint)
 						utxo, err := koios.GetAssetUTXOs(ctx, policyID, string(mint.AssetName))
 						if err != nil {
 							logger.Record.Warn("Could not get asset utxos", "ERROR", err)
@@ -163,7 +164,8 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 
 						metadata, err := cardano.ParseDatumValueFixed(*datum.Value)
 						if err != nil {
-							panic(err)
+							logger.Record.Error("Could not get datum", "ERROR", err)
+							continue
 						}
 
 
