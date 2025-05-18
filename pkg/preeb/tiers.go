@@ -15,7 +15,7 @@ func GetPolicyRoles(assetCount map[string]int, policyIDs PolicyIDs) []string {
 	var rolesToAssign []string
 	for policyID, policy := range policyIDs {
 		for role, bounds := range policy.Roles {
-			if assetCount[policyID] > int(bounds.Min) && assetCount[policyID] < int(bounds.Max) {
+			if assetCount[policyID] >= int(bounds.Min) && assetCount[policyID] < int(bounds.Max) {
 				rolesToAssign = append(rolesToAssign, role)
 			}
 		}
