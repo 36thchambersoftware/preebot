@@ -132,6 +132,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 		return nil, err
 	}
 
+	slog.Info("Checking roles", "USER", user.ID, "GUILD", guildID)
 	// Get qualified delegator roles
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
@@ -186,6 +187,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 				// Check if the user should have this role ...
 				if (!slices.Contains(rolesToAdd, currentRoleID)) {
 					// and remove it if not
+					slog.Info("Removing role", "GUILD", guildID, "ROLE", currentRoleID, "USER", user.ID)
 					err := S.GuildMemberRoleRemove(guildID, user.ID, currentRoleID)
 					if err != nil {
 						slog.Error("could not remove role", "role", currentRoleID, "error", err)
@@ -205,6 +207,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 	var assignedRoles []string
 
 	for _, roleID := range allQualifiedRoles {
+		slog.Info("Assigning role", "GUILD", guildID, "ROLE", roleID, "USER", user.ID)
 		role, err := AssignRoleByID(guildID, user.ID, roleID)
 		if err != nil {
 			return nil, err

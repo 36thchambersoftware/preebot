@@ -3,6 +3,7 @@ package blockfrost
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"log/slog"
 	"math"
@@ -119,6 +120,16 @@ func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
 	return account
 }
 
+
+func GetAddress(ctx context.Context, address string) bfg.Address {
+	addr, err := client.Address(ctx, address)
+	if err != nil {
+		log.Printf("Could not get account details: \aADDRESS: %v \nERROR: %v", address, err)
+	}
+
+	return addr
+}
+
 func GetStakeInfo(ctx context.Context, stakeAddress string) bfg.Account {
 	stakeDetails, err := client.Account(ctx, stakeAddress)
 	if err != nil {
@@ -190,7 +201,11 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, all
 	for _, address := range allAddresses {
 		total := 0
 		for _, utxo := range address.Amount {
-			for policyID := range policyIDs {
+			for policyID, policy := range policyIDs {
+				if !HasAllGroupedPolicies(policy, allAddresses) {
+					continue // Skip this policy if grouping not satisfied
+				}
+
 				if strings.HasPrefix(utxo.Unit, policyID) {
 					qty, err := strconv.Atoi(utxo.Quantity)
 					if err != nil {
@@ -201,6 +216,19 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, all
 						qty = int(math.Floor(float64(qty) / powInt(*utxo.Decimals)))
 					}
 
+					// ✅ Trait matching logic for NFTs
+					if len(policy.Traits) > 0 && utxo.HasNftOnchainMetadata {
+						asset, err := client.Asset(ctx, utxo.Unit)
+						if err != nil {
+							log.Printf("Could not get asset details: \nUNIT: %v \nERROR: %v", utxo.Unit, err)
+							continue // Skip this UTXO if asset details cannot be retrieved
+						}
+						slog.Info("asset", "METADATA", *asset.OnchainMetadata, "POLICY", policy.Traits)
+						if !HasMatchingTrait(asset.OnchainMetadata, policy.Traits) {
+							continue // Skip this UTXO if no trait matches
+						}
+					}
+
 					total+= qty
 					policyCounts[policyID] += total
 				}
@@ -209,33 +237,65 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, all
 	}
 
 	return policyCounts
+}
 
-	// {
-	// 	"asset": "78dea0d35c9ac1f554066ab4491b0862c2482bdf617e0ba81414d51c000de140546972656c657373576f726b657230313033",
-	// 	"policy_id": "78dea0d35c9ac1f554066ab4491b0862c2482bdf617e0ba81414d51c",
-	// 	"asset_name": "000de140546972656c657373576f726b657230313033",
-	// 	"fingerprint": "asset1w42x7zwpee4t28y8nzss0cteg6wahvkav7a8u2",
-	// 	"quantity": "1",
-	// 	"initial_mint_tx_hash": "a632fae151ba7c5748513f747db4f441336a5aa022d595c4ab826b1c6ed38a9c",
-	// 	"mint_or_burn_count": 1,
-	// 	"onchain_metadata": {
-	// 	  "name": "Tireless Worker #0103",
-	// 	  "mediaType": "image/jpeg",
-	// 	  "image": "ipfs://bafybeib3lggegs6cpfx3hecc3l2umzewr4tgip725eu364qjbeqhihgj7y",
-	// 	  "Rarity": "46436f6d6d6f6e",
-	// 	  "Headgear": "494865616470686f6e65",
-	// 	  "Background": "4d436f6d6d6f6e2059656c6c6f77",
-	// 	  "Eyes": "47476c6173736573",
-	// 	  "Chest": "4750656173616e74",
-	// 	  "Tool": "465363726f6c6c",
-	// 	  "Facial hair": "45506c61696e",
-	// 	  "Speciality": "424f47",
-	// 	  "description": "Main collection of the Necro League. "
-	// 	},
-	// 	"onchain_metadata_standard": "CIP68v1",
-	// 	"onchain_metadata_extra": null,
-	// 	"metadata": null
-	//   }
+func HasMatchingTrait(metadata *interface{}, requiredTraits map[string][]string) bool {
+	// Check if metadata is non-nil and of the right type
+	if metadata == nil {
+		return false
+	}
+
+	// Assert to map[string]interface{} (standard for onchain JSON)
+	metaMap, ok := (*metadata).(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	// Loop through required traits
+	for traitKey, allowedValues := range requiredTraits {
+		if val, exists := metaMap[traitKey]; exists {
+			valStr := fmt.Sprintf("%v", val)
+			for _, requiredVal := range allowedValues {
+				if valStr == requiredVal {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+
+
+func HasAllGroupedPolicies(policy preeb.Policy, userAddresses []bfg.AddressExtended) bool {
+	if len(policy.GroupWith) == 0 {
+		return true // No grouped policies required
+	}
+
+	// Track which required policies the user has
+	held := make(map[string]bool)
+
+	// For each address and its UTXOs
+	for _, address := range userAddresses {
+		for _, utxo := range address.Amount {
+			// Check if UTXO matches any policy in GroupWith
+			for requiredPolicyID := range policy.GroupWith {
+				if strings.HasPrefix(utxo.Unit, requiredPolicyID) {
+					held[requiredPolicyID] = true
+				}
+			}
+		}
+	}
+
+	// Ensure user holds something from each required group policy
+	for requiredPolicyID := range policy.GroupWith {
+		if !held[requiredPolicyID] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Convert ADA Handle address

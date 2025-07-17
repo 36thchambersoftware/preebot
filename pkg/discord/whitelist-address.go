@@ -10,10 +10,10 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var CHECK_ANY_WALLET_WHITELIST_COMMAND = discordgo.ApplicationCommand{
+var WHITELIST_ADDRESS_COMMAND = discordgo.ApplicationCommand{
 	Version:                  "0.01",
-	Name:                     "check-whitelist",
-	Description:              "Check if the supplied wallet is white-listed ",
+	Name:                     "whitelist-address",
+	Description:              "Add a wallet to the whitelist",
 	Options: []*discordgo.ApplicationCommandOption{{
 		Type:        discordgo.ApplicationCommandOptionString,
 		Name:        "address",
@@ -23,15 +23,15 @@ var CHECK_ANY_WALLET_WHITELIST_COMMAND = discordgo.ApplicationCommand{
 	}},
 }
 
-var CHECK_ANY_WALLET_WHITELIST_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+var WHITELIST_ADDRESS_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	options := GetOptions(i)
 	address := options["address"].StringValue()
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("Checking address against whitelist\n%s", address),
+			Content: fmt.Sprintf("Adding to whitelist...\n%s", address),
 			Flags:   discordgo.MessageFlagsEphemeral,
-			Title:   "Check wallet for WL",
+			Title:   "Add wallet to WL",
 		},
 	})
 
@@ -49,18 +49,24 @@ var CHECK_ANY_WALLET_WHITELIST_HANDLER = func(s *discordgo.Session, i *discordgo
 	}
 
 	addr := blockfrost.GetAddress(ctx, address)
-	content := ""
 
-	err = preeb.CheckAddress(addr.Address)
+	whitelist := preeb.Whitelist{
+		UserID:      	i.Member.User.ID,
+		StakeAddress: 	preeb.StakeAddress(*addr.StakeAddress),
+		Address:     	preeb.Address(address),
+		GuildID:     	i.GuildID,
+	}
+
+	err = whitelist.AddAddress()
 	if err != nil {
-		content = fmt.Sprintf("Wallet not found!\n%s",address)
+		content := fmt.Sprintf("Wallet not found!\n%s",address)
 		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		})
 		return
 	}
 
-	content = fmt.Sprintf("You're in friend! Your wallet is whitelisted!\n%s",address)
+	content := fmt.Sprintf("You're in friend! Your wallet is whitelisted!\n%s",address)
 	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 		Content: &content,
 	})

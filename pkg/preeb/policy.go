@@ -13,8 +13,10 @@ type (
 		Price float64 `bson:"price,omitempty"`
 		PriceChannel string `bson:"price_channel,omitempty"`
 		CompareADA bool `bson:"in_ada,omitempty"`
-		MetadataKeys []string `bson:"metadata_keys,omitempty"`
+		MetadataKeys []string `bson:"metadata_keys,omitempty"` // NFTs only - keys to display in the embed
+		Traits map[string][]string `bson:"traits,omitempty"` // NFTs only - specific traits to get the role
 		Message string `bson:"message,omitempty"`
+		GroupWith map[string]bool `bson:"group_with,omitempty"` // Group with another policy
 	}
 
 	// String here being the policy id

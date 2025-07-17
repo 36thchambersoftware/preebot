@@ -3,6 +3,7 @@ package koios
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"preebot/pkg/preeb"
 	"sort"
@@ -116,6 +117,10 @@ func GetAssetUTXOs(ctx context.Context, policyID, assetName string) (koios.UTxO,
 
 	if utxos.StatusCode != 200 {
 		return koios.UTxO{}, errors.New(utxos.Response.Error.Message)
+	}
+
+	if len(utxos.Data) == 0 {
+		return koios.UTxO{}, errors.New(fmt.Sprintf("no UTxOs found: %s %v", policyID, utxos))
 	}
 
 	return utxos.Data[0], nil

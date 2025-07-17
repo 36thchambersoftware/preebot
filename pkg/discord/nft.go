@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"preebot/pkg/blockfrost"
 	"preebot/pkg/cardano"
 	"preebot/pkg/koios"
 	"preebot/pkg/logger"
@@ -127,29 +128,32 @@ func AutomaticNFTBuyNotifier(ctx context.Context) {
 
 func AutomaticNFTMintNotifier(ctx context.Context) {
 	logger.Record.Info("getting nft mints")
-	
+
 	configs := preeb.LoadConfigs()
 	logger.Record.Info("getting configs")
 	for _, config := range configs {
 		for policyID, policy := range config.PolicyIDs {
 			if policy.NFT && policy.Notify && policy.Mint {
 				logger.Record.Info("checking nft mints")
-				mints, err := koios.GetPolicyAssetMints(ctx, policyID)
+				mints, err := blockfrost.AssetsByPolicy(ctx, policyID)
 				if err != nil {
 					logger.Record.Warn("Could not get nft mints", "ERROR", err)
 					return
 				}
 
-				if _, ok := LAST_UPDATE_TIME[policyID]; !ok {
-					now := time.Now()
-					LAST_UPDATE_TIME[policyID] = int(now.Unix())
-					logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE TIME", LAST_UPDATE_TIME[policyID])
+				if _, ok := LAST_ASSET_MINTED[policyID]; !ok {
+					LAST_ASSET_MINTED[policyID] = mints[0].Asset
+					logger.Record.Info("Notice", "POLICY", policyID, "LAST ASSET MINTED", LAST_ASSET_MINTED[policyID])
+				}
+
+				if mints[0].Asset == LAST_ASSET_MINTED[policyID] {
+					continue
 				}
 
 				for _, mint := range mints {
-					if (int(mint.CreationTime.Unix()) > LAST_UPDATE_TIME[policyID]) {
-						logger.Record.Info("NEW MINT", "POLICY", policyID, "DATA", mint)
-						utxo, err := koios.GetAssetUTXOs(ctx, policyID, string(mint.AssetName))
+					if (mint.Asset != LAST_ASSET_MINTED[policyID]) {
+						parts := strings.Split(mint.Asset, policyID)
+						utxo, err := koios.GetAssetUTXOs(ctx, policyID, parts[1])
 						if err != nil {
 							logger.Record.Warn("Could not get asset utxos", "ERROR", err)
 							continue
@@ -167,7 +171,6 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 							continue
 						}
 
-						logger.Record.Info("tier check", "meta", metadata)
 						image := metadata["image"]
 						tokenURI, err := url.Parse(image)
 						if err == nil {
@@ -195,7 +198,7 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 
 						embedFields = append(embedFields, &discordgo.MessageEmbedField{
 							Name:  "",
-							Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", mint.MintingTxHash),
+							Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", utxo.TxHash),
 							Inline: false,
 						})
 
@@ -220,11 +223,13 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 								logger.Record.Error("could not send message embed", "ERROR", err)
 							}
 						}
+					} else {
+						break
 					}
 				}
 				if mints != nil {
-					LAST_UPDATE_TIME[policyID] = int(mints[0].CreationTime.Unix())
-					logger.Record.Info("Notice", "POLICY", policyID, "LAST UPDATE HASH", LAST_UPDATE_TIME)
+					LAST_ASSET_MINTED[policyID] = mints[0].Asset
+					logger.Record.Info("Notice", "POLICY", policyID, "LAST ASSET MINTED", LAST_ASSET_MINTED)
 				}
 			}
 		}
