@@ -17,7 +17,7 @@ var (
 	DISCORD_WEBHOOK_URL string
 	CUSTODIAN_ADDRESSES map[string]string
 	LAST_UPDATE_TIME    map[string]int
-	LAST_ASSET_MINTED   map[string]string
+	MINTED_ASSETS       map[string]map[string]bool
 )
 
 func init() {
@@ -40,7 +40,7 @@ func initDiscord() {
 
 	ctx := context.Background()
 	LAST_UPDATE_TIME = make(map[string]int)
-	LAST_ASSET_MINTED = make(map[string]string)
+	MINTED_ASSETS = make(map[string]map[string]bool)
 
 	go automaticRoleChecker(ctx)
 	go automaticPoolBlocks(ctx)

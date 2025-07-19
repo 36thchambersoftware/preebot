@@ -11,14 +11,16 @@ import (
 )
 
 func AutomaticPoolBlocks(ctx context.Context, lastBlock string) (string) {
+	logger := logger.Record.WithGroup("Getting pool blocks")
 	configs := preeb.LoadConfigs()
 	var embedFields []*discordgo.MessageEmbedField
 	for _, config := range configs {
 		for poolID, active := range config.PoolIDs {
+			logger = logger.WithGroup(poolID)
 			if active {
 				blocks, err := blockfrost.PoolBlocks(ctx, poolID)
 				if err != nil {
-					logger.Record.Warn("Could not get blocks", "poolID", poolID, "ERROR", err)
+					logger.Warn("Could not get blocks", "poolID", poolID, "ERROR", err)
 					continue
 				}
 
@@ -26,12 +28,12 @@ func AutomaticPoolBlocks(ctx context.Context, lastBlock string) (string) {
 					lastBlock = blocks[0]
 					meta, err := blockfrost.PoolMeta(ctx, poolID)
 					if err != nil {
-						logger.Record.Warn("Could not get pool meta", "poolID", poolID, "ERROR", err)
+						logger.Warn("Could not get pool meta", "poolID", poolID, "ERROR", err)
 					}
 
 					info, err := blockfrost.PoolInfo(ctx, poolID)
 					if err != nil {
-						logger.Record.Warn("Could not get pool info", "poolID", poolID, "ERROR", err)
+						logger.Warn("Could not get pool info", "poolID", poolID, "ERROR", err)
 					}
 
 					embedField := discordgo.MessageEmbedField{
@@ -60,7 +62,7 @@ func AutomaticPoolBlocks(ctx context.Context, lastBlock string) (string) {
 			// TODO create configure channel for pool info
 			_, err := S.ChannelMessageSendEmbed(config.PoolChannelID, &embed)
 			if err != nil {
-				logger.Record.Error("could not send message embed", "ERROR", err)
+				logger.Error("could not send message embed", "ERROR", err)
 			}
 		}
 	}

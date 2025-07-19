@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"preebot/pkg/blockfrost"
-	"preebot/pkg/cardano"
 	"preebot/pkg/koios"
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
@@ -127,111 +126,169 @@ func AutomaticNFTBuyNotifier(ctx context.Context) {
 }
 
 func AutomaticNFTMintNotifier(ctx context.Context) {
-	logger.Record.Info("getting nft mints")
+	mintLogger := logger.Record
 
 	configs := preeb.LoadConfigs()
-	logger.Record.Info("getting configs")
 	for _, config := range configs {
 		for policyID, policy := range config.PolicyIDs {
 			if policy.NFT && policy.Notify && policy.Mint {
-				logger.Record.Info("checking nft mints")
-				mints, err := blockfrost.AssetsByPolicy(ctx, policyID)
+				mintLogger.Info("CHECKING FOR NEW MINTS", "POLICY", policyID)
+				mints, err := koios.GetPolicyAssetList(ctx, policyID)
 				if err != nil {
-					logger.Record.Warn("Could not get nft mints", "ERROR", err)
+					mintLogger.Warn("Could not get nft mints", "ERROR", err)
 					return
 				}
 
-				if _, ok := LAST_ASSET_MINTED[policyID]; !ok {
-					LAST_ASSET_MINTED[policyID] = mints[0].Asset
-					logger.Record.Info("Notice", "POLICY", policyID, "LAST ASSET MINTED", LAST_ASSET_MINTED[policyID])
-				}
-
-				if mints[0].Asset == LAST_ASSET_MINTED[policyID] {
-					continue
+				if _, ok := MINTED_ASSETS[policyID]; !ok {
+					mintLogger.Info("Initializing", "MINTED_ASSETS", policyID)
+					MINTED_ASSETS[policyID] = make(map[string]bool)
+					for _, mint := range mints {
+						MINTED_ASSETS[policyID][string(mint.AssetName)] = true
+					}
 				}
 
 				for _, mint := range mints {
-					if (mint.Asset != LAST_ASSET_MINTED[policyID]) {
-						parts := strings.Split(mint.Asset, policyID)
-						utxo, err := koios.GetAssetUTXOs(ctx, policyID, parts[1])
-						if err != nil {
-							logger.Record.Warn("Could not get asset utxos", "ERROR", err)
-							continue
-						}
+					assetName := string(mint.AssetName)
+					if _, ok := MINTED_ASSETS[policyID][string(mint.AssetName)]; ok {
+						continue
+					}
 
-						datum, err := koios.GetDatum(ctx, utxo.DatumHash)
-						if err != nil {
-							logger.Record.Warn("Could not get datum", "ERROR", err)
-							continue
-						}
+					mintLogger.Info("NEW MINT", "ASSET", assetName)
+					MINTED_ASSETS[policyID][assetName] = true
+					// parts := strings.Split(string(mint.AssetName), policyID)
+					// utxo, err := koios.GetAssetUTXOs(ctx, policyID, string(mint.AssetName))
+					// if err != nil {
+					// 	mintLogger.Warn("Could not get asset utxos", "ERROR", err)
+					// 	continue
+					// }
 
-						metadata, err := cardano.ParseDatumValueFixed(*datum.Value)
-						if err != nil {
-							logger.Record.Error("Could not get datum", "ERROR", err)
-							continue
-						}
+					// datum, err := koios.GetDatum(ctx, utxo.DatumHash)
+					// if err != nil {
+					// 	mintLogger.Warn("Could not get datum", "ERROR", err)
+					// 	continue
+					// }
 
-						image := metadata["image"]
-						tokenURI, err := url.Parse(image)
-						if err == nil {
+					// metadata, err := cardano.ParseDatumValueFixed(*datum.Value)
+					// if err != nil {
+					// 	mintLogger.Error("Could not get datum", "ERROR", err)
+					// 	continue
+					// }
+
+					asset, err := blockfrost.AssetInfo(ctx, fmt.Sprintf("%s%s", policyID, string(mint.AssetName)))
+					if err != nil {
+						mintLogger.Warn("Could not get asset info", "ERROR", err)
+						continue
+					}
+
+					var metaMap map[string]interface{}
+					var ok bool
+					metadata := asset.OnchainMetadata
+					if metadata != nil {
+						// Dereference and type assert to map
+						if metaMap, ok = (*metadata).(map[string]interface{}); !ok {
+							mintLogger.Warn("OnchainMetadata is not a valid map")
+						}
+						mintLogger.Info("OnchainMetadata", "DATA", metaMap)
+					}
+
+					image, ok := GetMetadataValue(asset.OnchainMetadata, "image")
+					if ok {
+						tokenURI, parseErr := url.Parse(image)
+						if parseErr == nil {
 							tokenURI.Scheme = "https"
 							tokenURI.Path = fmt.Sprintf("ipfs/%s%s", tokenURI.Host, tokenURI.Path)
 							tokenURI.Host = "ipfs.blockfrost.dev"
 							image = tokenURI.String()
-							logger.Record.Info("ipfs conversion", "url", image)
+							mintLogger.Info("ipfs conversion", "url", image)
 						} else {
-							logger.Record.Info("could not convert ipfs to standard", "ERROR", err)
+							mintLogger.Info("could not convert ipfs to standard", "ERROR", parseErr)
 						}
+					} else {
+						fmt.Println("image not found or unsupported format")
+					}
 
-						logger.Record.Info("building embed")
-						p := message.NewPrinter(language.English)
-						var embedFields []*discordgo.MessageEmbedField
+					mintLogger.Info("building embed")
+					p := message.NewPrinter(language.English)
+					var embedFields []*discordgo.MessageEmbedField
 
-						for _, v := range policy.MetadataKeys {
+					for _, v := range policy.MetadataKeys {
+						mintLogger.Info("checking metadata key", "KEY", v)
+						if m, exists := metaMap[v]; exists {
 							embedFields = append(embedFields, &discordgo.MessageEmbedField{
 								Name:   p.Sprintf("%s", strings.ToUpper(v)),
-								Value:  p.Sprintf("%s", metadata[v]),
+								Value:  p.Sprintf("%s", m),
 								Inline: false,
 							})
 						}
-						
-
-						embedFields = append(embedFields, &discordgo.MessageEmbedField{
-							Name:  "",
-							Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", utxo.TxHash),
-							Inline: false,
-						})
-
-						message := fmt.Sprintf("%s ", policy.Message)
-						alt_channel_id := policy.DefaultChannelID
-						embed := discordgo.MessageEmbed{
-							Title:       "New Collection Mint!",
-							Description: message,
-							Color: 		 0xd269ff,
-							Image:       &discordgo.MessageEmbedImage{URL: image},
-							Footer:      &discordgo.MessageEmbedFooter{Text: "PREEB thanks you for delegating!"},
-							Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
-							Fields:      embedFields,
-						}
-						_, err = S.ChannelMessageSendEmbed(policy.DefaultChannelID, &embed)
-						if err != nil {
-							logger.Record.Error("could not send message embed", "ERROR", err)
-						}
-						if alt_channel_id != policy.DefaultChannelID {
-							_, err = S.ChannelMessageSendEmbed(alt_channel_id, &embed)
-							if err != nil {
-								logger.Record.Error("could not send message embed", "ERROR", err)
-							}
-						}
-					} else {
-						break
 					}
-				}
-				if mints != nil {
-					LAST_ASSET_MINTED[policyID] = mints[0].Asset
-					logger.Record.Info("Notice", "POLICY", policyID, "LAST ASSET MINTED", LAST_ASSET_MINTED)
+					
+
+					if len(embedFields) == 0 {
+						mintLogger.Warn("No metadata fields found for policy", "POLICY", policyID, "ASSET", mint.AssetName)
+						continue
+					}
+
+					embedFields = append(embedFields, &discordgo.MessageEmbedField{
+						Name:  "",
+						Value: fmt.Sprintf("-# [Tx](https://cardanoscan.io/transaction/%s 'View Transaction')", asset.InitialMintTxHash),
+						Inline: false,
+					})
+
+					message := fmt.Sprintf("%s ", policy.Message)
+					alt_channel_id := policy.DefaultChannelID
+					embed := discordgo.MessageEmbed{
+						Title:       "New Collection Mint!",
+						Description: message,
+						Color: 		 0xd269ff,
+						Image:       &discordgo.MessageEmbedImage{URL: image},
+						Footer:      &discordgo.MessageEmbedFooter{Text: "PREEB thanks you for delegating!"},
+						Provider:    &discordgo.MessageEmbedProvider{Name: "PREEB"},
+						Fields:      embedFields,
+					}
+					_, err = S.ChannelMessageSendEmbed(policy.DefaultChannelID, &embed)
+					if err != nil {
+						mintLogger.Error("could not send message embed","CHANNEL", policy.DefaultChannelID, "ERROR", err)
+					}
+					if alt_channel_id != policy.DefaultChannelID {
+						_, err = S.ChannelMessageSendEmbed(alt_channel_id, &embed)
+						if err != nil {
+							mintLogger.Error("could not send message embed", "CHANNEL", alt_channel_id, "ERROR", err)
+						}
+					}
 				}
 			}
 		}
 	}
+}
+
+func GetMetadataValue(meta *interface{}, key string) (string, bool) {
+	if meta == nil {
+		return "", false
+	}
+
+	metaMap, ok := (*meta).(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+
+	val, exists := metaMap[key]
+	if !exists {
+		return "", false
+	}
+
+	switch v := val.(type) {
+	case string:
+		return v, true
+	case []interface{}:
+		if len(v) > 0 {
+			// Convert first element to string
+			var str string
+			for _, v := range v {
+				str += fmt.Sprintf("%v", v)
+			}
+			return str, true
+		}
+	}
+
+	return "", false
 }

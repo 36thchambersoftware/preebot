@@ -140,6 +140,20 @@ func GetDatum(ctx context.Context, datumHash koios.DatumHash) (*koios.DatumInfo,
 	return datum.Data, nil
 }
 
+func GetPolicyAssetList(ctx context.Context, policyID string) ([]koios.PolicyAssetListItem, error) {
+	var options *koios.RequestOptions
+	assets, err := client.GetPolicyAssetList(ctx, koios.PolicyID(policyID), options)
+	if err != nil {
+		return nil, err
+	}
+
+	if assets.StatusCode != 200 {
+		return nil, errors.New(assets.Response.Error.Message)
+	}
+
+	return assets.Data, nil
+}
+
 // func GetTransactionDetails(ctx context.Context, txHash string) {
 // 	var options *koios.RequestOptions
 // 	client.GetTxInfo(ctx, txs []koios.TxHash, opts *koios.RequestOptions)
