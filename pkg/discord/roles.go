@@ -142,11 +142,12 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 	sort.Strings(delegatorRoleIDs)
 
 	// Get qualified policy holder roles
-	allAddresses, err := blockfrost.GetAllUserAddresses(ctx, user.Wallets)
+	allAssets, err := blockfrost.GetAllUserAssets(ctx, user.Wallets)
 	if err != nil {
+		slog.Error("could not get user assets", "user", user.ID, "error", err)
 		return nil, err
 	}
-	assetCount := blockfrost.CountUserAssetsByPolicy(ctx, config.PolicyIDs, allAddresses)
+	assetCount := blockfrost.CountUserAssetsByPolicy(ctx, config.PolicyIDs, allAssets)
 	policyRoleIDs := preeb.GetPolicyRoles(assetCount, config.PolicyIDs)
 	sort.Strings(policyRoleIDs)
 
@@ -229,7 +230,7 @@ func AutomaticRoleChecker() {
 	users := preeb.LoadUsers()
 
 	for _, config := range configs {
-		// TODO: implement custodial maybe. loadCustodianData(config.Custodians)
+		slog.Info("Checking roles for guild", "GUILD", config.GuildID)
 
 		// Get guild member linked wallets
 		for _, user := range users {

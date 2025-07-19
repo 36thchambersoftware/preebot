@@ -177,65 +177,99 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 	return assets, nil
 }
 
-func GetAllUserAddresses(ctx context.Context, wallets preeb.Wallets) ([]bfg.AddressExtended, error) {
-	var allAddresses []bfg.AddressExtended
-	for _, addr := range wallets {
-		address, err := client.AddressExtended(ctx, addr.String())
+// Get all the assets from all addresses for a single stake address
+func GetAllUserAddressesAssets(ctx context.Context, stake preeb.StakeAddress, page uint) ([]bfg.AccountAssociatedAsset, error) {
+	APIQueryParams.Page = int(page)
+	assets, err := client.AccountAssociatedAssets(ctx, string(stake), APIQueryParams)
+	if err != nil {
+		log.Printf("Could not get addresses for stake address: \nSTAKEADDR: %v \nERROR: %v", stake, err)
+		return nil, err
+	}
+
+	if len(assets) == 100 {
+		nextPageAssets, err := GetAllUserAddressesAssets(ctx, stake, page+1)
 		if err != nil {
 			return nil, err
 		}
-
-		allAddresses = append(allAddresses, address)
+		assets = append(assets, nextPageAssets...)
 	}
 
-	return allAddresses, nil
+	return assets, nil
 }
 
-func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, allAddresses []bfg.AddressExtended) map[string]int {
+// Sum all the assets from the different wallets
+func SumAllAssets(ctx context.Context, assets []bfg.AccountAssociatedAsset) (map[string]uint64) {
+	allAssets := make(map[string]uint64) // Unit -> Quantity
+	for _, asset := range assets {
+		qty, err := strconv.Atoi(asset.Quantity)
+		if err != nil {
+			log.Printf("Could not convert asset quantity to int: \nASSET: %v \nERROR: %v", asset, err)
+			continue
+		}
+		allAssets[asset.Unit] += uint64(qty)
+	}
+
+	return allAssets
+}
+
+// Create a map of all the user's assets for easy access
+func GetAllUserAssets(ctx context.Context, wallets preeb.Wallets) (map[string]uint64, error) {
+	var allAssets []bfg.AccountAssociatedAsset
+	for stake, _ := range wallets {
+		assets, err := GetAllUserAddressesAssets(ctx, stake, 1)
+		if err != nil {
+			log.Printf("Could not get addresses for stake address: \nSTAKEADDR: %v \nERROR: %v", stake, err)
+			return nil, err
+		}
+		allAssets = append(allAssets, assets...)
+	}
+
+	summedAssets := SumAllAssets(ctx, allAssets)
+
+	slog.Info("Summed assets", "TOTAL", len(summedAssets), "ASSETS", summedAssets)
+	return summedAssets, nil
+}
+
+func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, allAssets map[string]uint64) map[string]int {
 	var policyCounts = make(map[string]int)
 
 	powInt := func (decimals int) float64 {
 		return math.Pow(10, float64(decimals))
 	}
 
-	for _, address := range allAddresses {
+	for unit, quantity := range allAssets {
 		total := 0
-		for _, utxo := range address.Amount {
-			for policyID, policy := range policyIDs {
-				if !HasAllGroupedPolicies(policy, allAddresses) {
-					continue // Skip this policy if grouping not satisfied
+		for policyID, policy := range policyIDs {
+			if !HasAllGroupedPolicies(policy, allAssets) {
+				continue // Skip this policy if grouping not satisfied
+			}
+
+			if strings.HasPrefix(unit, policyID) {
+				asset, err := client.Asset(ctx, unit)
+				if err != nil {
+					log.Printf("Could not get asset details: \nUNIT: %v \nERROR: %v", unit, err)
+					continue // Skip this UTXO if asset details cannot be retrieved
 				}
 
-				if strings.HasPrefix(utxo.Unit, policyID) {
-					qty, err := strconv.Atoi(utxo.Quantity)
-					if err != nil {
-						log.Printf("Could not get quantity from utxo: %v\n%v", utxo, err)
-					}
-
-					if utxo.Decimals != nil && *utxo.Decimals > 0 {
-						qty = int(math.Floor(float64(qty) / powInt(*utxo.Decimals)))
-					}
-
-					// ✅ Trait matching logic for NFTs
-					if len(policy.Traits) > 0 && utxo.HasNftOnchainMetadata {
-						asset, err := client.Asset(ctx, utxo.Unit)
-						if err != nil {
-							log.Printf("Could not get asset details: \nUNIT: %v \nERROR: %v", utxo.Unit, err)
-							continue // Skip this UTXO if asset details cannot be retrieved
-						}
-						slog.Info("asset", "METADATA", *asset.OnchainMetadata, "POLICY", policy.Traits)
-						if !HasMatchingTrait(asset.OnchainMetadata, policy.Traits) {
-							continue // Skip this UTXO if no trait matches
-						}
-					}
-
-					total+= qty
-					policyCounts[policyID] += total
+				qty := int(quantity) // Default to quantity as is
+				if asset.Metadata != nil && asset.Metadata.Decimals > 0 {
+					qty = int(math.Floor(float64(quantity) / powInt(asset.Metadata.Decimals)))
 				}
+
+				// ✅ Trait matching logic for NFTs
+				if len(policy.Traits) > 0 && asset.OnchainMetadata != nil {
+					if !HasMatchingTrait(asset.OnchainMetadata, policy.Traits) {
+						continue // Skip this UTXO if no trait matches
+					}
+				}
+
+				total+= qty
+				policyCounts[policyID] += total
 			}
 		}
 	}
 
+	slog.Info("Policy counts", "TOTAL", len(policyCounts), "COUNTS", policyCounts)
 	return policyCounts
 }
 
@@ -257,6 +291,7 @@ func HasMatchingTrait(metadata *interface{}, requiredTraits map[string][]string)
 			valStr := fmt.Sprintf("%v", val)
 			for _, requiredVal := range allowedValues {
 				if valStr == requiredVal {
+					slog.Info("Trait match found", "TRAIT", traitKey, "VALUE", valStr)
 					return true
 				}
 			}
@@ -268,7 +303,7 @@ func HasMatchingTrait(metadata *interface{}, requiredTraits map[string][]string)
 
 
 
-func HasAllGroupedPolicies(policy preeb.Policy, userAddresses []bfg.AddressExtended) bool {
+func HasAllGroupedPolicies(policy preeb.Policy, allAssets map[string]uint64) bool {
 	if len(policy.GroupWith) == 0 {
 		return true // No grouped policies required
 	}
@@ -277,13 +312,11 @@ func HasAllGroupedPolicies(policy preeb.Policy, userAddresses []bfg.AddressExten
 	held := make(map[string]bool)
 
 	// For each address and its UTXOs
-	for _, address := range userAddresses {
-		for _, utxo := range address.Amount {
-			// Check if UTXO matches any policy in GroupWith
-			for requiredPolicyID := range policy.GroupWith {
-				if strings.HasPrefix(utxo.Unit, requiredPolicyID) {
-					held[requiredPolicyID] = true
-				}
+	for unit, _ := range allAssets {
+		// Check if UTXO matches any policy in GroupWith
+		for requiredPolicyID := range policy.GroupWith {
+			if strings.HasPrefix(unit, requiredPolicyID) {
+				held[requiredPolicyID] = true
 			}
 		}
 	}
