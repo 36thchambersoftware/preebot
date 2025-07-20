@@ -65,6 +65,7 @@ func init() {
 }
 
 func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTXOs, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetLastTransaction")
 	APIQueryParams.Order = "desc"
 	txs, err := client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
@@ -86,6 +87,7 @@ func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTX
 }
 
 func GetAddressTransactions(ctx context.Context, address string) ([]bfg.AddressTransactions, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetAddressTransactions")
 	APIQueryParams.Order = "desc"
 	txs, err := client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
@@ -97,6 +99,7 @@ func GetAddressTransactions(ctx context.Context, address string) ([]bfg.AddressT
 }
 
 func GetTransaction(ctx context.Context, hash string) (bfg.TransactionUTXOs, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetTransaction")
 	tx, err := client.TransactionUTXOs(ctx, hash)
 	if err != nil {
 		log.Printf("Could not get txs for address: \nHASH: %v \nERROR: %v", hash, err)
@@ -107,6 +110,7 @@ func GetTransaction(ctx context.Context, hash string) (bfg.TransactionUTXOs, err
 }
 
 func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetAccountByAddress")
 	stakeDetails, err := client.Address(ctx, address)
 	if err != nil {
 		log.Printf("Could not get account details: \aADDRESS: %v \nERROR: %v", address, err)
@@ -122,6 +126,7 @@ func GetAccountByAddress(ctx context.Context, address string) bfg.Account {
 
 
 func GetAddress(ctx context.Context, address string) bfg.Address {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetAddress")
 	addr, err := client.Address(ctx, address)
 	if err != nil {
 		log.Printf("Could not get account details: \aADDRESS: %v \nERROR: %v", address, err)
@@ -131,6 +136,7 @@ func GetAddress(ctx context.Context, address string) bfg.Address {
 }
 
 func GetStakeInfo(ctx context.Context, stakeAddress string) bfg.Account {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetStakeInfo")
 	stakeDetails, err := client.Account(ctx, stakeAddress)
 	if err != nil {
 		log.Printf("Could not get account details: \nSTAKEADDR: %v \nERROR: %v", stakeAddress, err)
@@ -144,6 +150,7 @@ func GetTotalStake(ctx context.Context, poolIDs preeb.PoolID, wallets preeb.Wall
 
 	accounts := maps.Keys(wallets)
 	for _, stakeAddress := range accounts {
+		logger.Record.Info("BLOCKFROST", "CALL", "GetTotalStake")
 		account := GetStakeInfo(ctx, string(stakeAddress))
 		if account.Active && poolIDs[*account.PoolID] {
 			stake, err := strconv.Atoi(account.ControlledAmount)
@@ -160,6 +167,7 @@ func GetTotalStake(ctx context.Context, poolIDs preeb.PoolID, wallets preeb.Wall
 }
 
 func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetPoolMetaData")
 	metaData, err := client.PoolMetadata(ctx, poolID)
 	if err != nil {
 		return bfg.PoolMetadata{}, err
@@ -169,6 +177,7 @@ func GetPoolMetaData(ctx context.Context, poolID string) (bfg.PoolMetadata, erro
 }
 
 func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetPolicyAssets")
 	assets, err := client.AssetsByPolicy(ctx, policyID)
 	if err != nil {
 		return []bfg.AssetByPolicy{}, err
@@ -179,6 +188,7 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 
 // Get all the assets from all addresses for a single stake address
 func GetAllUserAddressesAssets(ctx context.Context, stake preeb.StakeAddress, page uint) ([]bfg.AccountAssociatedAsset, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "GetAllUserAddressesAssets")
 	APIQueryParams.Page = int(page)
 	assets, err := client.AccountAssociatedAssets(ctx, string(stake), APIQueryParams)
 	if err != nil {
@@ -245,6 +255,7 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, all
 			}
 
 			if strings.HasPrefix(unit, policyID) {
+				logger.Record.Info("BLOCKFROST", "CALL", "GetAsset")
 				asset, err := client.Asset(ctx, unit)
 				if err != nil {
 					log.Printf("Could not get asset details: \nUNIT: %v \nERROR: %v", unit, err)
@@ -337,6 +348,7 @@ func HandleAddress(ctx context.Context, addr string) (string, error) {
 	if isAdaHandle {
 		hexAddr := hex.EncodeToString([]byte(addr[1:]))
 		assetName := ADA_HANDLE_POLICY_ID + CIP68v1_NONSENSE + hexAddr
+		logger.Record.Info("BLOCKFROST", "CALL", "HandleAddress")
 		addresses, err := client.AssetAddresses(ctx, assetName, APIQueryParams)
 		if err != nil {
 			return "", err
@@ -355,6 +367,7 @@ func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID stri
 	var epoch int
 	l := logger.Record.WithGroup("EpochsDelegatedToPool")
 	APIQueryParams.Order = "desc"
+	logger.Record.Info("BLOCKFROST", "CALL", "AccountDelegationHistory")
 	history, err := client.AccountDelegationHistory(ctx, stakeAddress, APIQueryParams)
 	if err != nil {
 		l.Error("could not get account history", "ERROR", err)
@@ -403,6 +416,7 @@ func PoolInfo(ctx context.Context, poolID string) (*bfg.Pool, error) {
 }
 
 func PoolHistory(ctx context.Context, poolID string) ([]bfg.PoolHistory, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "PoolHistory")
 	APIQueryParams.Order = "desc"
 	history, err := client.PoolHistory(ctx, poolID, APIQueryParams)
 	if err != nil {
@@ -413,6 +427,7 @@ func PoolHistory(ctx context.Context, poolID string) ([]bfg.PoolHistory, error) 
 }
 
 func PoolMeta(ctx context.Context, poolID string) (*bfg.PoolMetadata, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "PoolMeta")
 	info, err := client.PoolMetadata(ctx, poolID)
 	if err != nil {
 		return nil, err
@@ -422,6 +437,7 @@ func PoolMeta(ctx context.Context, poolID string) (*bfg.PoolMetadata, error) {
 }
 
 func PoolBlocks(ctx context.Context, poolID string) (bfg.PoolBlocks, error) {
+	logger.Record.Info("BLOCKFROST", "CALL", "PoolBlocks")
 	APIQueryParams.Order = "desc"
 	blocks, err := client.PoolBlocks(ctx, poolID, APIQueryParams)
 	if err != nil {

@@ -137,6 +137,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
+	// TODO: Only check stake if delegator roles are enabled
 	totalStake := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
 	delegatorRoleIDs := preeb.GetDelegatorRolesByStake(int(totalStake), config.DelegatorRoles)
 	sort.Strings(delegatorRoleIDs)
@@ -235,7 +236,7 @@ func AutomaticRoleChecker() {
 		// Get guild member linked wallets
 		for _, user := range users {
 			ctx := context.Background()
-			ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+			ctx, cancel := context.WithTimeout(ctx, time.Second*20)
 			defer cancel()
 
 			// Check roles
