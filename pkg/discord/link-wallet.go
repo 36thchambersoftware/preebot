@@ -11,6 +11,7 @@ import (
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 
+	bfg "github.com/blockfrost/blockfrost-go"
 	"github.com/bwmarrin/discordgo"
 	"golang.org/x/exp/rand"
 )
@@ -91,65 +92,100 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		})
 	}
 
-	// Give the user a moment to send the tx before checking for it.
-	time.Sleep(120 * time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
-	content := "I'll check to see if your transaction is on the blockchain now."
-	msg, err := s.FollowupMessageEdit(i.Interaction, linkAmtMsg.ID, &discordgo.WebhookEdit{
-		Content: &content,
-	})
-	if err != nil {
-		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: "Something went wrong! Maybe open a #support-ticket ",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		})
-	}
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 
-	txDetails, err := blockfrost.GetLastTransaction(ctx, address)
-	if err != nil {
-		content := fmt.Sprintf("Something went wrong! Maybe open a #support-ticket: %v", err)
-		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: content,
-			Flags:   discordgo.MessageFlagsEphemeral,
-		})
-	}
-	walletLinked := false
+	foundTx := false
+	consecutiveErrors := 0
+	const maxErrors = 4
+	
+	loop:
+	for {
+		var txDetails bfg.TransactionUTXOs
+		var txErr error
+		select {
+		case <-ctx.Done():
+			break loop
+		case <-ticker.C:
+			txDetails, txErr = blockfrost.GetLastTransaction(ctx, address)
+			if txErr != nil {
+				consecutiveErrors++
+				logger.Record.Warn("Error fetching last transaction", "error", txErr, "attempt", consecutiveErrors)
 
-	logger.Record.Info("Checking transaction outputs", "ADDRESS", address, "TX_OUTPUTS", txDetails.Outputs[0])
-	for _, output := range txDetails.Outputs {
-		for _, amount := range output.Amount {
-			logger.Record.Info("Checking amount", "UNIT", amount.Unit, "QUANTITY", amount.Quantity, "LINK_WALLET_AMOUNT", LINK_WALLET_AMOUNT)
-			if amount.Unit == "lovelace" && amount.Quantity[:3] == LINK_WALLET_AMOUNT[:3] {
-				// Link successful
-				walletLinked = true
-				content := "Great! Your wallet has been linked!"
-				s.FollowupMessageEdit(i.Interaction, msg.ID, &discordgo.WebhookEdit{
-					Content: &content,
-				})
-				break
+				if consecutiveErrors == 1 {
+					msg := "Still checking... encountered a small hiccup reaching the blockchain. Trying again!"
+					s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+						Content: msg,
+						Flags:   discordgo.MessageFlagsEphemeral,
+					})
+				}
+
+				if consecutiveErrors >= maxErrors {
+					content := "There was a problem checking your transaction after multiple tries. Please try `/link-wallet` again in a few minutes or open a #support-ticket."
+					s.FollowupMessageEdit(i.Interaction, linkAmtMsg.ID, &discordgo.WebhookEdit{
+						Content: &content,
+					})
+					break loop
+				}
+
+				continue
+			}
+
+			// Reset error count after a successful call
+			consecutiveErrors = 0
+
+			for _, output := range txDetails.Outputs {
+				for _, amount := range output.Amount {
+					logger.Record.Info("Checking amount", "UNIT", amount.Unit, "QUANTITY", amount.Quantity, "LINK_WALLET_AMOUNT", LINK_WALLET_AMOUNT)
+					if amount.Unit == "lovelace" && amount.Quantity[:4] == LINK_WALLET_AMOUNT[:4] {
+						logger.Record.Info("Found transaction with correct amount", "ADDRESS", address, "AMOUNT", amount.Quantity)
+						foundTx = true
+						break
+					}
+				}
+				if foundTx {
+					break loop
+				}
+			}
+
+			if foundTx {
+				logger.Record.Info("Transaction matched, exiting loop")
+				break loop
 			}
 		}
 	}
 
-	if walletLinked {
-		account := blockfrost.GetAccountByAddress(ctx, address)
-		// if user.Wallets == nil {
-		// 	user.Wallets = make(preeb.Wallets)
-		// }
-		user.Wallets[preeb.StakeAddress(account.StakeAddress)] = preeb.Address(address)
 
-		if user.ID == "" {
-			user.ID = i.Member.User.ID
-		}
-
-		// preeb.SaveUser(user)
-		user.Save()
-	} else {
-		content := "I couldn't verify your address. Maybe the transaction isn't on the blockchain yet. Try the /link-wallet command again when your transaction is complete. If it still doesn't work, open a ticket and we'll figure it out."
-		s.FollowupMessageEdit(i.Interaction, msg.ID, &discordgo.WebhookEdit{
+	if !foundTx {
+		content := "I couldn't verify your address within 5 minutes. Make sure you sent the right amount and try again. If you're stuck, open a #support-ticket."
+		s.FollowupMessageEdit(i.Interaction, linkAmtMsg.ID, &discordgo.WebhookEdit{
 			Content: &content,
 		})
+		return
 	}
+
+	// Link successful
+	content := "Great! Your wallet has been linked!"
+	s.FollowupMessageEdit(i.Interaction, linkAmtMsg.ID, &discordgo.WebhookEdit{
+		Content: &content,
+	})
+
+
+	account := blockfrost.GetAccountByAddress(ctx, address)
+	// if user.Wallets == nil {
+	// 	user.Wallets = make(preeb.Wallets)
+	// }
+	user.Wallets[preeb.StakeAddress(account.StakeAddress)] = preeb.Address(address)
+
+	if user.ID == "" {
+		user.ID = i.Member.User.ID
+	}
+
+	// preeb.SaveUser(user)
+	user.Save()
 
 	config := preeb.LoadConfig(i.GuildID)
 

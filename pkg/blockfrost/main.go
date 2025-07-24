@@ -21,7 +21,6 @@ import (
 
 var (
 	client         bfg.APIClient
-	APIQueryParams bfg.APIQueryParams
 	blockfrostProjectID string
 )
 
@@ -65,22 +64,30 @@ func init() {
 }
 
 func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTXOs, error) {
-	logger.Record.Info("BLOCKFROST", "CALL", "GetLastTransaction")
-	APIQueryParams.Order = "desc"
+	logger.Record.Info("BLOCKFROST", "CALL", "GetLastTransaction", "ADDRESS", address)
+	APIQueryParams := bfg.APIQueryParams{Order: "desc"}
 	txs, err := client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
-		log.Printf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
+		logger.Record.Error("Could not get transactions for address", "ADDRESS", address, "ERROR", err)
 		return bfg.TransactionUTXOs{}, err
 	}
 
-	var hash string
-	if len(txs) > 0 {
-		hash = txs[0].TxHash
+	logger.Record.Info("BLOCKFROST", "TXS_COUNT", len(txs))
+	if len(txs) == 0 {
+		logger.Record.Warn("No transactions found for address", "ADDRESS", address)
+		return bfg.TransactionUTXOs{}, nil
+	}
+
+	logger.Record.Info("BLOCKFROST", "TX0", txs[0])
+	hash := txs[0].TxHash
+	if hash == "" {
+		logger.Record.Error("No transactions found for address", "txs", txs)
+		return bfg.TransactionUTXOs{}, fmt.Errorf("no transactions found for address: %v", address)
 	}
 
 	txDetails, err := client.TransactionUTXOs(ctx, hash)
 	if err != nil {
-		log.Printf("Could not get tx details: \nHASH: %v \nERROR: %v", hash, err)
+		logger.Record.Error("Could not get transaction details", "hash", hash, "error", err)
 	}
 
 	return txDetails, nil
@@ -88,7 +95,7 @@ func GetLastTransaction(ctx context.Context, address string) (bfg.TransactionUTX
 
 func GetAddressTransactions(ctx context.Context, address string) ([]bfg.AddressTransactions, error) {
 	logger.Record.Info("BLOCKFROST", "CALL", "GetAddressTransactions")
-	APIQueryParams.Order = "desc"
+	APIQueryParams := bfg.APIQueryParams{Order: "desc"}
 	txs, err := client.AddressTransactions(ctx, address, APIQueryParams)
 	if err != nil {
 		log.Printf("Could not get txs for address: \nADDRESS: %v \nERROR: %v", address, err)
@@ -189,7 +196,7 @@ func GetPolicyAssets(ctx context.Context, policyID string) ([]bfg.AssetByPolicy,
 // Get all the assets from all addresses for a single stake address
 func GetAllUserAddressesAssets(ctx context.Context, stake preeb.StakeAddress, page uint) ([]bfg.AccountAssociatedAsset, error) {
 	logger.Record.Info("BLOCKFROST", "CALL", "GetAllUserAddressesAssets")
-	APIQueryParams.Page = int(page)
+	APIQueryParams := bfg.APIQueryParams{Page: int(page)}
 	assets, err := client.AccountAssociatedAssets(ctx, string(stake), APIQueryParams)
 	if err != nil {
 		log.Printf("Could not get addresses for stake address: \nSTAKEADDR: %v \nERROR: %v", stake, err)
@@ -351,9 +358,13 @@ func HandleAddress(ctx context.Context, addr string) (string, error) {
 		hexAddr := hex.EncodeToString([]byte(addr[1:]))
 		assetName := ADA_HANDLE_POLICY_ID + CIP68v1_NONSENSE + hexAddr
 		logger.Record.Info("BLOCKFROST", "CALL", "HandleAddress")
-		addresses, err := client.AssetAddresses(ctx, assetName, APIQueryParams)
+		addresses, err := client.AssetAddresses(ctx, assetName, bfg.APIQueryParams{})
 		if err != nil {
 			return "", err
+		}
+
+		if len(addresses) == 0 {
+			return "", fmt.Errorf("no address found for handle: %v", addr)
 		}
 
 		if len(addresses) > 0 {
@@ -368,7 +379,7 @@ func HandleAddress(ctx context.Context, addr string) (string, error) {
 func EpochsDelegatedToPool(ctx context.Context, stakeAddress string, poolID string) (*int, error) {
 	var epoch int
 	l := logger.Record.WithGroup("EpochsDelegatedToPool")
-	APIQueryParams.Order = "desc"
+	APIQueryParams := bfg.APIQueryParams{Order: "desc"}
 	logger.Record.Info("BLOCKFROST", "CALL", "AccountDelegationHistory")
 	history, err := client.AccountDelegationHistory(ctx, stakeAddress, APIQueryParams)
 	if err != nil {
@@ -419,7 +430,7 @@ func PoolInfo(ctx context.Context, poolID string) (*bfg.Pool, error) {
 
 func PoolHistory(ctx context.Context, poolID string) ([]bfg.PoolHistory, error) {
 	logger.Record.Info("BLOCKFROST", "CALL", "PoolHistory")
-	APIQueryParams.Order = "desc"
+	APIQueryParams := bfg.APIQueryParams{Order: "desc"}
 	history, err := client.PoolHistory(ctx, poolID, APIQueryParams)
 	if err != nil {
 		return nil, err
@@ -440,7 +451,7 @@ func PoolMeta(ctx context.Context, poolID string) (*bfg.PoolMetadata, error) {
 
 func PoolBlocks(ctx context.Context, poolID string) (bfg.PoolBlocks, error) {
 	logger.Record.Info("BLOCKFROST", "CALL", "PoolBlocks")
-	APIQueryParams.Order = "desc"
+	APIQueryParams := bfg.APIQueryParams{Order: "desc"}
 	blocks, err := client.PoolBlocks(ctx, poolID, APIQueryParams)
 	if err != nil {
 		return nil, err
