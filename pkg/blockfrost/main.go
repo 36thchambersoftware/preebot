@@ -236,7 +236,7 @@ func GetAllUserAssets(ctx context.Context, wallets preeb.Wallets) (map[string]ui
 
 	summedAssets := SumAllAssets(ctx, allAssets)
 
-	slog.Info("Summed assets", "TOTAL", len(summedAssets), "ASSETS", summedAssets)
+	// slog.Info("Summed assets", "TOTAL", len(summedAssets), "ASSETS", summedAssets)
 	return summedAssets, nil
 }
 
@@ -261,6 +261,8 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, all
 					log.Printf("Could not get asset details: \nUNIT: %v \nERROR: %v", unit, err)
 					continue // Skip this UTXO if asset details cannot be retrieved
 				}
+
+
 
 				qty := int(quantity) // Default to quantity as is
 				if asset.Metadata != nil && asset.Metadata.Decimals > 0 {

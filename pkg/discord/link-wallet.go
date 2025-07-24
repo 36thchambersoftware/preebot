@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"preebot/pkg/blockfrost"
+	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 
 	"github.com/bwmarrin/discordgo"
@@ -74,10 +75,11 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 		}
 	}
 
+	rand.Seed(uint64(time.Now().UnixNano()))
 	amount := rand.Intn(1000000)
 	LINK_WALLET_AMOUNT = fmt.Sprintf("1%s",strconv.Itoa(amount))
 	LINK_WALLET_AMOUNT_DISPLAY = fmt.Sprintf("1.%s", strconv.Itoa(amount)) // strconv.FormatFloat(1.0 + (float64(amount) / float64(1000000)), 'f', -1, 64)
-
+	logger.Record.Info("Linking wallet", "AMOUNT", LINK_WALLET_AMOUNT_DISPLAY, "LINK_WALLET_AMOUNT", LINK_WALLET_AMOUNT)
 	linkAmtMsg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: LINK_WALLET_AMOUNT_DISPLAY,
 		Flags:   discordgo.MessageFlagsEphemeral,
@@ -113,9 +115,11 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 	}
 	walletLinked := false
 
+	logger.Record.Info("Checking transaction outputs", "ADDRESS", address, "TX_OUTPUTS", txDetails.Outputs[0])
 	for _, output := range txDetails.Outputs {
 		for _, amount := range output.Amount {
-			if amount.Unit == "lovelace" && amount.Quantity == LINK_WALLET_AMOUNT {
+			logger.Record.Info("Checking amount", "UNIT", amount.Unit, "QUANTITY", amount.Quantity, "LINK_WALLET_AMOUNT", LINK_WALLET_AMOUNT)
+			if amount.Unit == "lovelace" && amount.Quantity[:3] == LINK_WALLET_AMOUNT[:3] {
 				// Link successful
 				walletLinked = true
 				content := "Great! Your wallet has been linked!"
@@ -129,6 +133,9 @@ var LINK_WALLET_HANDLER = func(s *discordgo.Session, i *discordgo.InteractionCre
 
 	if walletLinked {
 		account := blockfrost.GetAccountByAddress(ctx, address)
+		// if user.Wallets == nil {
+		// 	user.Wallets = make(preeb.Wallets)
+		// }
 		user.Wallets[preeb.StakeAddress(account.StakeAddress)] = preeb.Address(address)
 
 		if user.ID == "" {

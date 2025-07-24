@@ -48,7 +48,7 @@ func AutomaticPoolBlocks(ctx context.Context, lastBlock string) (string) {
 			}
 		}
 
-		if len(embedFields) > 0 {
+		if len(embedFields) > 0 && config.PoolChannelID != "" {
 			embed := discordgo.MessageEmbed{
 				Title: "Pool Info",
 				Description: fmt.Sprintf("Update!"),
