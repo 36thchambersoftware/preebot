@@ -135,7 +135,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 	slog.Info("Checking roles", "USER", user.ID, "GUILD", guildID)
 	// Get qualified delegator roles
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*20)
 	defer cancel()
 	// TODO: Only check stake if delegator roles are enabled
 	totalStake := blockfrost.GetTotalStake(ctx, config.PoolIDs, user.Wallets)
@@ -148,6 +148,7 @@ func AssignQualifiedRoles(guildID string, user preeb.User) ([]string, error) {
 		slog.Error("could not get user assets", "user", user.ID, "error", err)
 		return nil, err
 	}
+	
 	assetCount := blockfrost.CountUserAssetsByPolicy(ctx, config.PolicyIDs, allAssets)
 	policyRoleIDs := preeb.GetPolicyRoles(assetCount, config.PolicyIDs)
 	sort.Strings(policyRoleIDs)
@@ -242,7 +243,7 @@ func AutomaticRoleChecker() {
 			// Check roles
 			_, err := AssignQualifiedRoles(config.GuildID, user)
 			if err != nil {
-				slog.Error("could not assign roles", "user", user.ID, "error", err)
+				slog.Error("OTTO - could not assign roles", "guild", config.GuildID, "user", user.ID, "error", err)
 			}
 		}
 	}

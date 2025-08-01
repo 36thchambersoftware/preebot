@@ -18,6 +18,7 @@ var (
 	CUSTODIAN_ADDRESSES map[string]string
 	LAST_UPDATE_TIME    map[string]int
 	MINTED_ASSETS       map[string]map[string]bool
+	// USER_ASSETS			map[string][]bfg.Asset
 )
 
 func init() {
@@ -47,7 +48,7 @@ func initDiscord() {
 	go automaticBuyNotifier(ctx)
 	go automaticNftBuyNotifier(ctx)
 	go automaticNftMintNotifier(ctx)
-	// go automaticLaunchBuyNotifier(ctx)
+	// NOT IN USE // go automaticLaunchBuyNotifier(ctx)
 }
 
 func RefreshCommands() {

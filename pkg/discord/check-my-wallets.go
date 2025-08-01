@@ -37,7 +37,7 @@ var CHECK_MY_WALLETS_HANDLER = func(s *discordgo.Session, i *discordgo.Interacti
 
 	newRoleIDs, err := AssignQualifiedRoles(i.GuildID, user)
 	if err != nil {
-		slog.Error("could not assign roles", "ERROR", err)
+		slog.Error("CHECK WALLET - could not assign roles", "guild", i.GuildID, "user", user, "ERROR", err)
 		S.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Something went wrong! Maybe open a #support-ticket ",
 			Flags:   discordgo.MessageFlagsEphemeral,
