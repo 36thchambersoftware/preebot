@@ -225,7 +225,6 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 
 					if len(embedFields) == 0 {
 						mintLogger.Warn("No metadata fields found for policy", "POLICY", policyID, "ASSET", mint.AssetName)
-						continue
 					}
 
 					embedFields = append(embedFields, &discordgo.MessageEmbedField{
