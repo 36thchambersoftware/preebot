@@ -207,6 +207,10 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 						fmt.Println("image not found or unsupported format")
 					}
 
+					if image == "" {
+						continue
+					}
+
 					mintLogger.Info("building embed")
 					p := message.NewPrinter(language.English)
 					var embedFields []*discordgo.MessageEmbedField
