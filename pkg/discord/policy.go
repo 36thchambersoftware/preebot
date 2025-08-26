@@ -29,11 +29,16 @@ func AutomaticBuyNotifier(ctx context.Context) {
 				// Get price updates
 				if len(trades) > 0 && policy.PriceUpdate {
 					// Price looks like 0.00047929580750846594
-					data := &discordgo.ChannelEdit{Name: fmt.Sprintf("$%s: %.6f ADA", trades[0].TokenAName, trades[0].Price)}
-					logger.Record.Info("price update", "GUILD", config.GuildID, "TOKEN", trades[0].TokenAName, "PRICE", trades[0].Price)
-					_, err = S.ChannelEdit(policy.PriceChannel, data)
-					if err != nil {
-						logger.Record.Warn("Could not update price channel", "GUILD", config.GuildID, "policyID", policyID, "ERROR", err)
+					for _, trade := range trades {
+						if trade.Action == "buy" || trade.Action == "sell" {
+							data := &discordgo.ChannelEdit{Name: fmt.Sprintf("$%s: %.6f ADA", trade.TokenAName, trade.Price)}
+							logger.Record.Info("price update", "GUILD", config.GuildID, "TOKEN", trade.TokenAName, "PRICE", trade.Price)
+							_, err = S.ChannelEdit(policy.PriceChannel, data)
+							if err != nil {
+								logger.Record.Warn("Could not update price channel", "GUILD", config.GuildID, "policyID", policyID, "ERROR", err)
+							}
+							break
+						}	
 					}
 				}
 
