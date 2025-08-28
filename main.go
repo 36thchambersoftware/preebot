@@ -87,7 +87,11 @@ func main() {
 
 	// Setup discord
 	discord.S.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
-		if strings.Contains(strings.ToUpper(m.Author.GlobalName), "ANNOUNCEMENTS") || strings.Contains(strings.ToUpper(m.Author.GlobalName), "ADMIN") {
+		if m.Author == nil {
+			return
+		}
+		
+		if m.Author.GlobalName != "" && (strings.Contains(strings.ToUpper(m.Author.GlobalName), "ANNOUNCEMENTS") || strings.Contains(strings.ToUpper(m.Author.GlobalName), "ADMIN")) {
 			s.ChannelMessageDelete(m.ChannelID, m.ID)
 		}
 
@@ -98,6 +102,10 @@ func main() {
 
 	// Setup Command Handler
 	discord.S.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if i.Member == nil || i.Member.User == nil {
+			return
+		}
+		
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 			if _, ok := lockout[i.Member.User.ID]; !ok {
 				lockout[i.Member.User.ID] = struct{}{}

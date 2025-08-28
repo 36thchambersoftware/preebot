@@ -2,7 +2,6 @@ package blockfrost
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"preebot/pkg/handle"
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 
@@ -355,22 +355,13 @@ func HasAllGroupedPolicies(policy preeb.Policy, allAssets map[string]uint64) boo
 func HandleAddress(ctx context.Context, addr string) (string, error) {
 	isAdaHandle := strings.HasPrefix(addr, ADA_HANDLE_PREFIX)
 	if isAdaHandle {
-		hexAddr := hex.EncodeToString([]byte(addr[1:]))
-		assetName := ADA_HANDLE_POLICY_ID + CIP68v1_NONSENSE + hexAddr
-		logger.Record.Info("BLOCKFROST", "CALL", "HandleAddress")
-		addresses, err := client.AssetAddresses(ctx, assetName, bfg.APIQueryParams{})
+		address, err := handle.Lookup(addr[1:])
 		if err != nil {
+			logger.Record.Error("Could not resolve ADA handle address", "HANDLE", addr, "ERROR", err)
 			return "", err
 		}
-
-		if len(addresses) == 0 {
-			return "", fmt.Errorf("no address found for handle: %v", addr)
-		}
-
-		if len(addresses) > 0 {
-			return addresses[0].Address, nil
-		}
-
+		logger.Record.Info("Resolved ADA handle address", "HANDLE", addr, "ADDRESS", address)
+		return address, nil
 	}
 
 	return addr, nil
