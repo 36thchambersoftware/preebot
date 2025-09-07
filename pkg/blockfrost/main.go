@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"preebot/pkg/handle"
+	"preebot/pkg/koios"
 	"preebot/pkg/logger"
 	"preebot/pkg/preeb"
 
@@ -231,6 +232,24 @@ func SumAllAssets(ctx context.Context, assets []bfg.AccountAssociatedAsset) (map
 
 // Create a map of all the user's assets for easy access
 func GetAllUserAssets(ctx context.Context, wallets preeb.Wallets) (map[string]uint64, error) {
+	// Extract stake addresses
+	stakeAddresses := make([]preeb.StakeAddress, 0, len(wallets))
+	for stake := range wallets {
+		stakeAddresses = append(stakeAddresses, stake)
+	}
+	
+	// Use batched Koios call instead of individual Blockfrost calls
+	assets, err := koios.GetBatchedStakeAddressAssets(ctx, stakeAddresses)
+	if err != nil {
+		logger.Record.Warn("Koios batched call failed, falling back to Blockfrost", "error", err)
+		return GetAllUserAssetsBlockfrost(ctx, wallets)
+	}
+	
+	return assets, nil
+}
+
+// Fallback function using original Blockfrost approach
+func GetAllUserAssetsBlockfrost(ctx context.Context, wallets preeb.Wallets) (map[string]uint64, error) {
 	var allAssets []bfg.AccountAssociatedAsset
 	for stake, _ := range wallets {
 		assets, err := GetAllUserAddressesAssets(ctx, stake, 1)
@@ -242,8 +261,6 @@ func GetAllUserAssets(ctx context.Context, wallets preeb.Wallets) (map[string]ui
 	}
 
 	summedAssets := SumAllAssets(ctx, allAssets)
-
-	// slog.Info("Summed assets", "TOTAL", len(summedAssets), "ASSETS", summedAssets)
 	return summedAssets, nil
 }
 

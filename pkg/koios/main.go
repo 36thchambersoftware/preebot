@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"preebot/pkg/preeb"
 	"sort"
+	"strconv"
 
 	"github.com/cardano-community/koios-go-client/v4"
 )
@@ -154,7 +155,102 @@ func GetPolicyAssetList(ctx context.Context, policyID string) ([]koios.PolicyAss
 	return assets.Data, nil
 }
 
-// func GetTransactionDetails(ctx context.Context, txHash string) {
-// 	var options *koios.RequestOptions
-// 	client.GetTxInfo(ctx, txs []koios.TxHash, opts *koios.RequestOptions)
-// }
+func GetBatchedStakeAddressAssets(ctx context.Context, stakeAddresses []preeb.StakeAddress) (map[string]uint64, error) {
+	const batchSize = 100 // Koios allows up to 100 addresses per call
+	allAssets := make(map[string]uint64)
+	
+	// Process in batches of 100
+	for i := 0; i < len(stakeAddresses); i += batchSize {
+		end := i + batchSize
+		if end > len(stakeAddresses) {
+			end = len(stakeAddresses)
+		}
+		
+		batch := stakeAddresses[i:end]
+		batchAssets, err := getBatchStakeAssets(ctx, batch)
+		if err != nil {
+			return nil, err
+		}
+		
+		// Merge results
+		for unit, quantity := range batchAssets {
+			allAssets[unit] += quantity
+		}
+	}
+	
+	return allAssets, nil
+}
+
+func getBatchStakeAssets(ctx context.Context, stakeAddresses []preeb.StakeAddress) (map[string]uint64, error) {
+	// Convert stake addresses to koios.Address slice for batched call
+	koiosStakeAddrs := make([]koios.Address, len(stakeAddresses))
+	for i, stake := range stakeAddresses {
+		koiosStakeAddrs[i] = koios.Address(stake)
+	}
+	
+	// ✅ Single batched call to get all addresses for all stake addresses
+	var options *koios.RequestOptions
+	result, err := client.GetAccountAddresses(ctx, koiosStakeAddrs, false, false, options)
+	if err != nil {
+		return nil, err
+	}
+	
+	if result.StatusCode != 200 {
+		return nil, errors.New(result.Response.Error.Message)
+	}
+	
+	// Collect all addresses from all stake addresses
+	var allAddresses []preeb.Address
+	for _, accountAddr := range result.Data {
+		for _, addr := range accountAddr.Addresses {
+			allAddresses = append(allAddresses, preeb.Address(addr))
+		}
+	}
+	
+	if len(allAddresses) == 0 {
+		return make(map[string]uint64), nil
+	}
+	
+	// ✅ Batched calls to get address info for all addresses (batch by 100)
+	addressInfos, err := getBatchedAddressInformation(ctx, allAddresses)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Convert to asset map
+	assets := make(map[string]uint64)
+	for _, addrInfo := range addressInfos {
+		for _, utxo := range addrInfo.UTxOs {
+			for _, asset := range utxo.AssetList {
+				qty, _ := strconv.ParseUint(asset.Quantity.String(), 10, 64)
+				assets[string(asset.PolicyID)+string(asset.AssetName)] += qty
+			}
+		}
+	}
+	
+	return assets, nil
+}
+
+func getBatchedAddressInformation(ctx context.Context, addresses []preeb.Address) ([]koios.AddressInfo, error) {
+	const addressBatchSize = 100 // Koios allows up to 100 addresses per call
+	var allAddressInfos []koios.AddressInfo
+	
+	// Process addresses in batches of 100
+	for i := 0; i < len(addresses); i += addressBatchSize {
+		end := i + addressBatchSize
+		if end > len(addresses) {
+			end = len(addresses)
+		}
+		
+		batch := addresses[i:end]
+		batchInfos, err := AddressInformation(ctx, batch)
+		if err != nil {
+			return nil, err
+		}
+		
+		allAddressInfos = append(allAddressInfos, batchInfos...)
+	}
+	
+	return allAddressInfos, nil
+}
+
