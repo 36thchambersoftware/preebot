@@ -139,7 +139,7 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 					return
 				}
 
-				if _, ok := MINTED_ASSETS[policyID]; !ok {
+				if _, ok := MINTED_ASSETS[policyID]; !ok || MINTED_ASSETS[policyID] == nil || len(MINTED_ASSETS[policyID]) == 0 {
 					mintLogger.Info("Initializing", "MINTED_ASSETS", policyID)
 					MINTED_ASSETS[policyID] = make(map[string]bool)
 					for _, mint := range mints {
