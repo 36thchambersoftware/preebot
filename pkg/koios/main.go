@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"preebot/pkg/preeb"
 	"sort"
 	"strconv"
@@ -13,7 +14,17 @@ import (
 )
 
 var client *koios.Client
+var koiosToken string
 type EpochNo koios.EpochNo
+
+func loadKoiosToken() string {
+	koiosToken, ok := os.LookupEnv("KOIOS_TOKEN")
+	if !ok {
+		slog.Error("Could not get koios token")
+	}
+
+	return koiosToken
+}
 
 func init() {
 	var err error
@@ -21,6 +32,11 @@ func init() {
 	if err != nil {
 		slog.Error("could not connect koios api", "ERROR", err)
 	}
+	
+	err = client.SetAuth(loadKoiosToken())
+	if err != nil {
+		slog.Error("could not set koios token", "ERROR", err)
+	}	
 }
 
 func AddressInformation(ctx context.Context, addresses []preeb.Address) ([]koios.AddressInfo, error) {
