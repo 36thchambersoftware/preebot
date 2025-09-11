@@ -238,13 +238,16 @@ func GetAllUserAssets(ctx context.Context, wallets preeb.Wallets) (map[string]ui
 		stakeAddresses = append(stakeAddresses, stake)
 	}
 	
+	logger.Record.Info("TRYING KOIOS BATCHED CALL", "STAKE_ADDRESSES_COUNT", len(stakeAddresses))
+	
 	// Use batched Koios call instead of individual Blockfrost calls
 	assets, err := koios.GetBatchedStakeAddressAssets(ctx, stakeAddresses)
 	if err != nil {
-		logger.Record.Warn("Koios batched call failed, falling back to Blockfrost", "error", err)
+		logger.Record.Warn("Koios batched call failed, falling back to Blockfrost", "error", err, "STAKE_COUNT", len(stakeAddresses))
 		return GetAllUserAssetsBlockfrost(ctx, wallets)
 	}
 	
+	logger.Record.Info("KOIOS BATCHED CALL SUCCESS", "ASSETS_COUNT", len(assets))
 	return assets, nil
 }
 
@@ -279,7 +282,7 @@ func CountUserAssetsByPolicy(ctx context.Context, policyIDs preeb.PolicyIDs, all
 			}
 
 			if strings.HasPrefix(unit, policyID) {
-				logger.Record.Info("BLOCKFROST", "CALL", "GetAsset")
+				logger.Record.Info("BLOCKFROST", "CALL", "GetAsset", "UNIT", unit, "POLICY", policyID)
 				asset, err := client.Asset(ctx, unit)
 				if err != nil {
 					log.Printf("Could not get asset details: \nUNIT: %v \nERROR: %v", unit, err)
