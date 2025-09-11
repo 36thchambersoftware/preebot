@@ -133,29 +133,33 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 		for policyID, policy := range config.PolicyIDs {
 			if policy.NFT && policy.Notify && policy.Mint {
 				mintLogger.Info("CHECKING FOR NEW MINTS", "POLICY", policyID)
-				mints, err := koios.GetPolicyAssetList(ctx, policyID)
+				mints, err := koios.GetPolicyAssetMints(ctx, policyID)
 				if err != nil {
 					mintLogger.Warn("Could not get nft mints", "ERROR", err)
 					return
 				}
 
-				if _, ok := MINTED_ASSETS[policyID]; !ok || MINTED_ASSETS[policyID] == nil || len(MINTED_ASSETS[policyID]) == 0 {
-					mintLogger.Info("Initializing", "MINTED_ASSETS", policyID)
-					MINTED_ASSETS[policyID] = make(map[string]bool)
-					for _, mint := range mints {
-						MINTED_ASSETS[policyID][string(mint.AssetName)] = true
-					}
+				// Initialize last check time if not exists (use current time on first run)
+				lastCheckTime, exists := LAST_MINT_CHECK_TIME[policyID]
+				if !exists {
+					// On first run, set last check time to current time to avoid notifying about all existing mints
+					LAST_MINT_CHECK_TIME[policyID] = int(time.Now().Unix())
+					mintLogger.Info("Initializing mint tracker", "POLICY", policyID, "LAST_CHECK_TIME", LAST_MINT_CHECK_TIME[policyID])
+					continue // Skip notifications on first run
 				}
 
+				// Check for new mints since last check
+				newMintsFound := 0
 				for _, mint := range mints {
-					assetName := string(mint.AssetName)
-					if _, ok := MINTED_ASSETS[policyID][string(mint.AssetName)]; ok {
-						continue
-					}
-
-					mintLogger.Info("NEW MINT", "ASSET", assetName)
-					MINTED_ASSETS[policyID][assetName] = true
-					// parts := strings.Split(string(mint.AssetName), policyID)
+					mintTime := int(mint.CreationTime.Unix())
+					
+					// Only notify about mints that happened after our last check
+					if mintTime > lastCheckTime {
+						assetName := string(mint.AssetName)
+						mintLogger.Info("NEW MINT", "ASSET", assetName, "MINT_TIME", mintTime, "LAST_CHECK", lastCheckTime)
+						newMintsFound++
+						
+						// parts := strings.Split(string(mint.AssetName), policyID)
 					// utxo, err := koios.GetAssetUTXOs(ctx, policyID, string(mint.AssetName))
 					// if err != nil {
 					// 	mintLogger.Warn("Could not get asset utxos", "ERROR", err)
@@ -258,6 +262,24 @@ func AutomaticNFTMintNotifier(ctx context.Context) {
 							mintLogger.Error("could not send message embed", "CHANNEL", alt_channel_id, "ERROR", err)
 						}
 					}
+					}
+				}
+				
+				// Update last check time after processing all mints for this policy
+				if newMintsFound > 0 {
+					// Update to the newest mint time we found
+					newestMintTime := lastCheckTime
+					for _, mint := range mints {
+						mintTime := int(mint.CreationTime.Unix())
+						if mintTime > newestMintTime {
+							newestMintTime = mintTime
+						}
+					}
+					LAST_MINT_CHECK_TIME[policyID] = newestMintTime
+					mintLogger.Info("Updated last check time", "POLICY", policyID, "NEW_MINTS", newMintsFound, "LAST_CHECK_TIME", newestMintTime)
+				} else {
+					// Even if no new mints, update timestamp to current time to avoid re-checking old mints
+					LAST_MINT_CHECK_TIME[policyID] = int(time.Now().Unix())
 				}
 			}
 		}

@@ -32,7 +32,7 @@ func init() {
 	if err != nil {
 		slog.Error("could not connect koios api", "ERROR", err)
 	}
-	
+
 	err = client.SetAuth(loadKoiosToken())
 	if err != nil {
 		slog.Error("could not set koios token", "ERROR", err)
@@ -158,6 +158,10 @@ func GetDatum(ctx context.Context, datumHash koios.DatumHash) (*koios.DatumInfo,
 }
 
 func GetPolicyAssetList(ctx context.Context, policyID string) ([]koios.PolicyAssetListItem, error) {
+	// The Koios Go library has a bug where RequestOptions.SetCurrentPage() tries to write to a nil map
+	// Until that's fixed, we can only get the first 1000 assets reliably
+	// This is still better than getting truncated lists that cause duplicate notifications
+	
 	var options *koios.RequestOptions
 	assets, err := client.GetPolicyAssetList(ctx, koios.PolicyID(policyID), options)
 	if err != nil {
@@ -168,6 +172,13 @@ func GetPolicyAssetList(ctx context.Context, policyID string) ([]koios.PolicyAss
 		return nil, errors.New(assets.Response.Error.Message)
 	}
 
+	slog.Info("Fetched policy assets (first 1000 max due to library limitation)", "POLICY", policyID, "TOTAL_ASSETS", len(assets.Data))
+	
+	// If we got exactly 1000, warn that there may be more
+	if len(assets.Data) == 1000 {
+		slog.Warn("Policy returned exactly 1000 assets - there may be more, but Koios library pagination is broken", "POLICY", policyID)
+	}
+	
 	return assets.Data, nil
 }
 
